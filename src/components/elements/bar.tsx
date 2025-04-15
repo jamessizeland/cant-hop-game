@@ -1,4 +1,5 @@
 import React from "react";
+import LilyPad from "./lilypad";
 
 interface BarProps {
   value: number; // 0 to total
@@ -12,8 +13,9 @@ const Bar: React.FC<BarProps> = ({ value, total = 12 }) => {
   return (
     <ul className="steps steps-vertical">
       {Array.from({ length: total }).map((_, index) => {
-        const className = index < value ? "step step-primary" : "step";
-        return <li key={index} className={className}></li>;
+        // const className = index < value ? "step step-primary" : "step";
+        // return <li key={index} className={className}></li>;
+        return <LilyPad />;
       })}
     </ul>
   );

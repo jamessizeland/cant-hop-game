@@ -1,14 +1,16 @@
-import Bar from "components/elements/bar";
 import { useState } from "react";
-import Dice from "react-dice-roll";
+import Bar from "components/elements/bar";
 
 export function GamePage() {
   const [value, setValue] = useState(0);
   return (
     <div>
-      <p>Can't Stop</p>
-      <Bar value={value} total={12} />
-      <Dice onRoll={(value) => setValue((last) => last + value)} />
+      <div className="border border-white">Top Bar</div>
+      <div className="border border-white">
+        <p>Game</p>
+        <Bar value={1} total={2} />
+      </div>
+      <div className="border border-white">Rolling Area</div>
     </div>
   );
 }
