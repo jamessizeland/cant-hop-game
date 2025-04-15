@@ -2,9 +2,10 @@ import LilyPad from "./lilypad";
 import { motion } from "motion/react";
 import { useMemo } from "react";
 import { GiFrog } from "react-icons/gi";
+import { PlayerColors } from "types";
 
-type PositionProps = {
-  className?: string;
+/** Details of which players are present at this position */
+export type PositionProps = {
   player1?: boolean;
   player2?: boolean;
   player3?: boolean;
@@ -43,23 +44,47 @@ export default PositionMarker;
 
 /** Position the frogs within the div.  If there is one frog, place it in the center, if there are more, arrange them. */
 const FrogPositioning = ({
-  player1,
-  player2,
-  player3,
-  player4,
-  risker,
+  player1 = false,
+  player2 = false,
+  player3 = false,
+  player4 = false,
+  risker = false,
 }: PositionProps) => {
-  const frogs = [player1, player2, player3, player4, risker].filter(
-    Boolean
-  ).length;
+  const frogs = [player1, player2, player3, player4];
+  const frogPositions = [
+    { top: "30%", left: "30%" },
+    { top: "70%", left: "70%" },
+    { top: "30%", left: "70%" },
+    { top: "70%", left: "30%" },
+  ];
 
   return (
     <div>
-      <GiFrog className="absolute top-0 left-3 z-10 text-white" />
-      <GiFrog className="absolute top-3 left-3 z-10 text-blue-500" />
-      <GiFrog className="absolute top-0 left-0 z-10 text-yellow-400" />
-      <GiFrog className="absolute top-3 left-0 z-10 text-purple-500" />
-      <GiFrog className="absolute top-1 left-1.5 z-20 text-black" />
+      {frogs.map(
+        (frog, index) =>
+          frog && (
+            <GiFrog
+              key={index}
+              className={`absolute z-10 text-${PlayerColors[index]}`}
+              style={{
+                top: frogPositions[index]?.top,
+                left: frogPositions[index]?.left,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          )
+      )}
+      {risker && (
+        <GiFrog
+          className={`absolute z-20 text-black`}
+          style={{
+            top: "50%",
+            left: "50%",
+            fontSize: "1.7rem",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+      )}
     </div>
   );
 };
