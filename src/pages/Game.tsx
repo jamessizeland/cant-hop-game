@@ -1,14 +1,21 @@
 import { useState } from "react";
 import Bar from "components/elements/bar";
+import DiceRoller from "components/elements/rolling";
 
 export function GamePage() {
   const [value, setValue] = useState(0);
   return (
-    <div>
-      <div className="border border-white">Top Bar</div>
-      <div className="border border-white">
-        <h1>Game</h1>
-        <div className="flex items-center">
+    <div className="flex flex-col items-center h-screen w-screen">
+      <div className="h-10 w-screen">Top Bar</div>
+      <div
+        className=" w-screen flex items-center justify-center flex-col"
+        style={{
+          // borderRadius: "45%",
+          background:
+            "radial-gradient(circle, rgba(49,130,206,1) 50%, rgba(49,130,206,0) 90%)",
+        }}
+      >
+        <div className="flex items-center w-screen justify-center">
           <Bar value={2} total={3} />
           <Bar value={3} total={5} />
           <Bar value={4} total={7} />
@@ -22,7 +29,7 @@ export function GamePage() {
           <Bar value={12} total={3} />
         </div>
       </div>
-      <div className="border border-white">Rolling Area</div>
+      <DiceRoller />
     </div>
   );
 }

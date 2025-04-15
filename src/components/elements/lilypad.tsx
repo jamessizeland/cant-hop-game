@@ -9,7 +9,7 @@ const LilyPad = ({ className }: { className?: string }) => (
     <defs>
       {/* Define a radial gradient to simulate natural light and depth */}
       <radialGradient id="lilyGrad" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#81C784" />
+        <stop offset="0%" stopColor="#bfef10" />
         <stop offset="100%" stopColor="#66BB6A" />
       </radialGradient>
 
@@ -28,9 +28,9 @@ const LilyPad = ({ className }: { className?: string }) => (
         <rect x="0" y="0" width="200" height="200" fill="white" />
         <path
           d="
-            M100,100
-            L190,80
-            L190,140
+            M110,100
+            L200,80
+            L190,120
             Z
           "
           fill="black"
@@ -56,7 +56,7 @@ const LilyPad = ({ className }: { className?: string }) => (
       />
 
       {/* Central highlight detail */}
-      <circle cx="100" cy="100" r="25" fill="#81C784" opacity="0.5" />
+      <circle cx="100" cy="100" r="25" fill="#bfef10" opacity="0.5" />
 
       {/* A subtle vein drawn across the lily pad */}
       <path

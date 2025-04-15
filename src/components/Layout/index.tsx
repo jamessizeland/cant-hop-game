@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { ToastContainer } from "react-toastify";
-import Footer from "./footer";
 import { checkEnv } from "utils";
 
 console.log(checkEnv());
@@ -12,7 +11,6 @@ export function Layout({ children }: { children: ReactNode }) {
       <ToastContainer />
       <div>
         <div className="flex-grow">{children}</div>
-        <Footer />
       </div>
     </div>
   );
