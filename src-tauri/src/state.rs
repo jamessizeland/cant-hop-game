@@ -40,7 +40,7 @@ pub type GameStateMutex = std::sync::Mutex<GameState>;
 pub struct GameState {
     pub settings: SettingsState,
     pub current_player: usize,
-    pub columns: [Column; 12],
+    pub columns: [Column; 11],
 }
 
 impl Default for GameState {
@@ -67,78 +67,72 @@ impl Default for GameState {
     }
 }
 
-const fn generate_columns() -> [Column; 12] {
-    const HEIGHTS: [usize; 12] = [3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3, 1];
+const fn generate_columns() -> [Column; 11] {
+    const HEIGHTS: [usize; 11] = [3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3];
     [
         Column {
-            height: HEIGHTS[0],
-            col: 0,
-            hops: [0; 4],
-            risked: 0,
-        },
-        Column {
-            col: 1,
-            height: HEIGHTS[1],
-            hops: [0; 4],
-            risked: 0,
-        },
-        Column {
             col: 2,
-            height: HEIGHTS[2],
+            height: HEIGHTS[0],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 3,
-            height: HEIGHTS[3],
+            height: HEIGHTS[1],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 4,
-            height: HEIGHTS[4],
+            height: HEIGHTS[2],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 5,
-            height: HEIGHTS[5],
+            height: HEIGHTS[3],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 6,
-            height: HEIGHTS[6],
+            height: HEIGHTS[4],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 7,
-            height: HEIGHTS[7],
+            height: HEIGHTS[5],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 8,
-            height: HEIGHTS[8],
+            height: HEIGHTS[6],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 9,
-            height: HEIGHTS[9],
+            height: HEIGHTS[7],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 10,
-            height: HEIGHTS[10],
+            height: HEIGHTS[8],
             hops: [0; 4],
             risked: 0,
         },
         Column {
             col: 11,
-            height: HEIGHTS[11],
+            height: HEIGHTS[9],
+            hops: [0; 4],
+            risked: 0,
+        },
+        Column {
+            col: 12,
+            height: HEIGHTS[10],
             hops: [0; 4],
             risked: 0,
         },

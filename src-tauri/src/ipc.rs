@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use rand::random;
 
 use crate::state::{GameState, GameStateMutex, SettingsState};
@@ -40,13 +41,22 @@ pub fn roll_dice() -> [u8; 4] {
 #[tauri::command]
 /// Choose columns to risk
 pub fn choose_columns(
-    columns: [usize; 2],
+    first: usize,
+    second: Option<usize>,
     state: tauri::State<GameStateMutex>,
 ) -> tauri::Result<GameState> {
     let mut game_state = state.lock().unwrap();
-    for col in columns {
-        game_state.columns[col].risked += 1;
-    }
-    println!("Columns chosen: {:?}", columns);
+    let Some(col1) = game_state.columns.get_mut(first) else {
+        return Err(anyhow!("Invalid column index {}", first).into());
+    };
+    col1.risked += 1;
+    let Some(second) = second else {
+        return Ok(game_state.clone());
+    };
+
+    let Some(col2) = game_state.columns.get_mut(second) else {
+        return Err(anyhow!("Invalid column index {}", second).into());
+    };
+    col2.risked += 1;
     Ok(game_state.clone())
 }
