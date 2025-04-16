@@ -11,6 +11,7 @@ pub fn run() {
             ipc::stop_game,
             ipc::roll_dice,
             ipc::choose_columns,
+            ipc::end_turn,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

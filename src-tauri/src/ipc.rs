@@ -60,3 +60,12 @@ pub fn choose_columns(
     col2.risked += 1;
     Ok(game_state.clone())
 }
+
+#[tauri::command]
+/// Player has chosen to end their turn
+pub fn end_turn(state: tauri::State<GameStateMutex>) -> tauri::Result<GameState> {
+    let mut game_state = state.lock().unwrap();
+    game_state.next_player();
+    game_state.check_is_over();
+    Ok(game_state.clone())
+}
