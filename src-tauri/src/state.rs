@@ -60,6 +60,7 @@ pub struct Column {
 pub type GameStateMutex = std::sync::Mutex<GameState>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Game state information
 pub struct GameState {
     pub settings: SettingsState,
     pub current_player: usize,
@@ -68,8 +69,13 @@ pub struct GameState {
 }
 
 impl GameState {
-    /// Set to next player
+    /// Lock in any risked moves for the current player and
+    /// set to next player
     pub fn next_player(&mut self) {
+        let player = self.current_player;
+        for column in self.columns.as_mut() {
+            column.hops[player] = (column.hops[player] + column.risked).clamp(0, column.height);
+        }
         self.current_player = (self.current_player + 1) % self.settings.players.len();
     }
 
