@@ -7,12 +7,12 @@ export type Player = {
 };
 
 export type Column = {
-  /** Column number */
+  /** The dice number of the column */
   col: number;
-  /** Total height of the column */
+  /** The height of the column, which is the number of steps */
   height: number;
   /** Number of hops safe for each player */
-  hops: number[];
+  hops: [number, number, number, number];
   /** Number of hops risked beyond safe.  Must be +ve int */
   risked: number;
 };
@@ -24,6 +24,28 @@ export type SettingsState = {
   /** Number of columns required to win */
   winCols: number;
 };
+
+/** Game state information */
+export type GameState = {
+  settings: SettingsState;
+  currentPlayer: number;
+  columns: [
+    Column,
+    Column,
+    Column,
+    Column,
+    Column,
+    Column,
+    Column,
+    Column,
+    Column,
+    Column,
+    Column
+  ];
+  winner: number | null;
+};
+
+export type DiceResult = [number, number, number, number];
 
 /** Global Definition of the four player colours */
 export const PlayerColors = ["white", "red-500", "yellow-400", "purple-500"];
