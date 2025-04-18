@@ -57,14 +57,17 @@ pub struct Column {
     /// The number of hops the current player has risked in the column
     /// This is relative to their current position in the column.
     pub risked: usize,
+    /// Whether the column is locked
+    pub locked: bool,
 }
 
 impl Debug for Column {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let locked = if self.locked { "🔒" } else { "🔒" };
         writeln!(
             f,
-            "{} |{},{},{},{}| {}",
-            self.col, self.hops[0], self.hops[1], self.hops[2], self.hops[3], self.risked
+            "{} {}|{},{},{},{}| {}",
+            self.col, locked, self.hops[0], self.hops[1], self.hops[2], self.hops[3], self.risked
         )
     }
 }
@@ -166,66 +169,77 @@ const fn generate_columns() -> [Column; 11] {
             height: HEIGHTS[0],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 3,
             height: HEIGHTS[1],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 4,
             height: HEIGHTS[2],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 5,
             height: HEIGHTS[3],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 6,
             height: HEIGHTS[4],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 7,
             height: HEIGHTS[5],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 8,
             height: HEIGHTS[6],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 9,
             height: HEIGHTS[7],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 10,
             height: HEIGHTS[8],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 11,
             height: HEIGHTS[9],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
         Column {
             col: 12,
             height: HEIGHTS[10],
             hops: [0; 4],
             risked: 0,
+            locked: false,
         },
     ]
 }
