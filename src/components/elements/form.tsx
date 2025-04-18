@@ -159,7 +159,7 @@ function PlayerForm({ first, second }: { first: string; second: string }) {
           selector={(state) => [state.canSubmit, state.isSubmitting]}
           children={([canSubmit, isSubmitting]) => (
             <motion.button
-              className="p-2 h-12 w-32 border rounded mx-2 bg-green-400 text-black disabled:bg-gray-300 disabled:text-gray-500"
+              className="p-2 h-12 w-32 border rounded mx-2 disabled:bg-gray-300 disabled:text-gray-500 btn btn-xl bg-green-400 text-black"
               type="submit"
               disabled={!canSubmit}
               animate={{ y: [0, -10, 0] }}
