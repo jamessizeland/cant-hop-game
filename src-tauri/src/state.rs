@@ -1,3 +1,5 @@
+use std::{collections::HashSet, fmt::Debug};
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,7 +46,7 @@ pub struct Player {
     won_cols: Vec<usize>,
 }
 
-#[derive(Default, Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Default, Copy, Clone, Serialize, Deserialize)]
 pub struct Column {
     /// The dice number of the column
     pub col: usize,
@@ -57,15 +59,47 @@ pub struct Column {
     pub risked: usize,
 }
 
+impl Debug for Column {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "{} |{},{},{},{}| {}",
+            self.col, self.hops[0], self.hops[1], self.hops[2], self.hops[3], self.risked
+        )
+    }
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct DiceResult {
+    pub dice: [usize; 4],
+    pub choices: HashSet<(usize, Option<usize>)>,
+}
+
 pub type GameStateMutex = std::sync::Mutex<GameState>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 /// Game state information
 pub struct GameState {
     pub settings: SettingsState,
     pub current_player: usize,
     pub columns: [Column; 11],
     pub winner: Option<Player>,
+}
+
+impl Debug for GameState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Settings: {:?}", self.settings)?;
+        writeln!(f, "Winner: {:?}", self.winner)?;
+        writeln!(
+            f,
+            "Current Player: {} | {}",
+            self.current_player, self.settings.players[self.current_player].name
+        )?;
+        for column in &self.columns {
+            write!(f, "{:?}", column)?;
+        }
+        Ok(())
+    }
 }
 
 impl GameState {
@@ -104,7 +138,7 @@ impl Default for GameState {
                         won_cols: vec![],
                     },
                     Player {
-                        mode: PlayerMode::Normal,
+                        mode: PlayerMode::Human,
                         id: 1,
                         name: "Player 2".to_string(),
                         won_cols: vec![],
