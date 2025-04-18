@@ -104,11 +104,16 @@ impl Debug for GameState {
 
 impl GameState {
     /// Lock in any risked moves for the current player and
-    /// set to next player
-    pub fn next_player(&mut self) {
+    /// set to next player, unless they were forced to end their turn.
+    /// in which case, we don't lock in the risked moves.
+    pub fn next_player(&mut self, forced: bool) {
         let player = self.current_player;
         for column in self.columns.as_mut() {
-            column.hops[player] = (column.hops[player] + column.risked).clamp(0, column.height);
+            if !forced {
+                // player banked their risked moves, so we add them to each column.
+                column.hops[player] = (column.hops[player] + column.risked).clamp(0, column.height);
+            }
+            column.risked = 0;
         }
         self.current_player = (self.current_player + 1) % self.settings.players.len();
     }

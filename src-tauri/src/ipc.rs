@@ -142,11 +142,14 @@ pub fn choose_columns(
 }
 
 #[tauri::command]
-/// Player has chosen to end their turn
-pub fn end_turn(state: tauri::State<GameStateMutex>) -> GameState {
+/// Player has chosen to end their turn, or has been forced to end it by
+/// pushing their luck too far, and running out of options.
+pub fn end_turn(forced: bool, state: tauri::State<GameStateMutex>) -> GameState {
     let mut game_state = state.lock().unwrap();
-    game_state.next_player();
-    game_state.check_is_over();
+    game_state.next_player(forced);
+    if !forced {
+        game_state.check_is_over();
+    }
     game_state.clone()
 }
 

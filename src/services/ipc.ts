@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { DiceResult, GameState, SettingsState } from "types";
+import { DiceResult, GameState, PlayerChoice, SettingsState } from "types";
 import { notifyError } from "./notifications";
 
 /**
@@ -32,24 +32,22 @@ export async function rollDice(): Promise<DiceResult> {
  * @throws Will throw an error if the columns fail to be chosen.
  */
 export async function chooseColumns(
-  first: number,
-  second?: number
+  choice: PlayerChoice
 ): Promise<GameState | undefined> {
   // convert number to index, as the backend uses 0-based indexing and the user is
   // choosing a 2d6 number, so we need to subtract 2 from the number.
-  first = first - 2;
-  second = second ? second - 2 : undefined;
+  const first = choice[0] - 2;
+  const second = choice[1] ? choice[1] - 2 : undefined;
   try {
-    const state = await invoke<GameState>("choose_columns", { first, second });
-    return state;
+    return await invoke<GameState>("choose_columns", { first, second });
   } catch (e) {
     notifyError(`Failed to choose columns: ${e}`, "ChooseColumnsError");
   }
 }
 
 /** Player has chosen to end their turn. */
-export async function endTurn(): Promise<GameState> {
-  return await invoke<GameState>("end_turn");
+export async function endTurn(forced: boolean): Promise<GameState> {
+  return await invoke<GameState>("end_turn", { forced });
 }
 
 /** Return the current game state. */

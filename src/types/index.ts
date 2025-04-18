@@ -1,10 +1,16 @@
 /** Player */
 export type Player = {
   /** Player type */
-  mode: "human" | "safe" | "normal" | "risky";
-  id: string;
+  mode: PlayerMode;
+  /** Player's unique ID */
+  id: number;
+  /** Player's identifying name */
   name: string;
+  /** Number of columns the player has won so far */
+  won_cols: number[];
 };
+
+export type PlayerMode = "Human" | "Safe" | "Normal" | "Risky";
 
 export type Column = {
   /** The dice number of the column */
@@ -17,104 +23,49 @@ export type Column = {
   risked: number;
 };
 
+/** 11 columns, one for each possible number on 2D6 */
+export type Columns = [
+  Column,
+  Column,
+  Column,
+  Column,
+  Column,
+  Column,
+  Column,
+  Column,
+  Column,
+  Column,
+  Column
+];
+
 /** Settings information */
 export type SettingsState = {
   /** Number of players */
   players: Player[];
   /** Number of columns required to win */
-  winCols: number;
+  win_cols: number;
 };
 
 /** Game state information */
 export type GameState = {
+  /** Settings submitted at the start of the game */
   settings: SettingsState;
-  currentPlayer: number;
-  columns: [
-    Column,
-    Column,
-    Column,
-    Column,
-    Column,
-    Column,
-    Column,
-    Column,
-    Column,
-    Column,
-    Column
-  ];
+  /** Index of current player */
+  current_player: number;
+  /** 11 columns, one for each possible number on 2D6 */
+  columns: Columns;
+  /** Index of winning player */
   winner: number | null;
 };
 
-export type DiceResult = [number, number, number, number];
+/** Result of rolling the four dice */
+export type DiceResult = {
+  dice: [number, number, number, number];
+  choices: [number, number | undefined][];
+};
 
 /** Global Definition of the four player colours */
-export const PlayerColors = ["white", "red-500", "yellow-400", "purple-500"];
+export const PlayerColors = ["#ffffff", "#f87171", "#99f2e6", "#a78bfa"];
 
-export const DemoColumns: Column[] = [
-  {
-    col: 2,
-    height: 3,
-    hops: [0, 1, 2, 1],
-    risked: 0,
-  },
-  {
-    col: 3,
-    height: 5,
-    hops: [4, 0, 2, 2],
-    risked: 0,
-  },
-  {
-    col: 4,
-    height: 7,
-    hops: [0, 2, 3, 1],
-    risked: 0,
-  },
-  {
-    col: 5,
-    height: 9,
-    hops: [0, 1, 2, 3],
-    risked: 0,
-  },
-  {
-    col: 6,
-    height: 11,
-    hops: [5, 6, 7, 8],
-    risked: 1,
-  },
-  {
-    col: 7,
-    height: 13,
-    hops: [0, 1, 2, 3],
-    risked: 2,
-  },
-  {
-    col: 8,
-    height: 11,
-    hops: [0, 1, 2, 3],
-    risked: 3,
-  },
-  {
-    col: 9,
-    height: 9,
-    hops: [0, 1, 2, 3],
-    risked: 1,
-  },
-  {
-    col: 10,
-    height: 7,
-    hops: [0, 1, 2, 3],
-    risked: 0,
-  },
-  {
-    col: 11,
-    height: 5,
-    hops: [2, 1, 2, 3],
-    risked: 1,
-  },
-  {
-    col: 12,
-    height: 3,
-    hops: [2, 1, 2, 2],
-    risked: 0,
-  },
-];
+/** Player can choose up to two columns per turn. */
+export type PlayerChoice = [number, number | undefined];
