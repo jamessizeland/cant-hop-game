@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { chooseColumns, endTurn, rollDice } from "services/ipc";
 import { notifyError } from "services/notifications";
-import { GameState } from "types";
+import { GameState, PlayerChoice } from "types";
 
 type RollerProps = {
   setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;
@@ -38,9 +38,9 @@ const choicesVariants = {
 const DiceRoller = ({ setGameState }: RollerProps) => {
   const [dice, setDice] = useState<{
     dice: number[];
-    choices: [number, number | undefined][];
+    choices: PlayerChoice[];
   }>({ dice: [], choices: [] });
-  const [hops, setHops] = useState<[number, number | undefined][]>([]);
+  const [hops, setHops] = useState<PlayerChoice[]>([]);
 
   const updateDice = async () => {
     // Clear previous roll if needed.
@@ -50,6 +50,22 @@ const DiceRoller = ({ setGameState }: RollerProps) => {
       const newDice = await rollDice();
       setDice(newDice);
     }, 100);
+  };
+
+  const makeChoice = async (choice: PlayerChoice) => {
+    setHops((hops) => {
+      const newHops = [...hops, choice];
+      console.log("new hops: ", newHops);
+      return newHops;
+    });
+    const state = await chooseColumns(choice);
+    setDice({ dice: [], choices: [] });
+    if (state) {
+      console.log("updating choices");
+      setGameState(state);
+    } else {
+      notifyError("Something went wrong choosing columns", "choiceError");
+    }
   };
 
   return (
@@ -116,24 +132,7 @@ const DiceRoller = ({ setGameState }: RollerProps) => {
               animate="visible"
               variants={choicesVariants}
               type="button"
-              onClick={async () => {
-                setHops((hops) => {
-                  const newHops = [...hops, choice];
-                  console.log("new hops: ", newHops);
-                  return newHops;
-                });
-                const state = await chooseColumns(choice[0], choice[1]);
-                setDice({ dice: [], choices: [] });
-                if (state) {
-                  console.log("updating choices");
-                  setGameState(state);
-                } else {
-                  notifyError(
-                    "Something went wrong choosing columns",
-                    "choiceError"
-                  );
-                }
-              }}
+              onClick={() => makeChoice(choice)}
             >
               {choice[0]} {choice[1] ? `, ${choice[1]}` : ""}
             </motion.button>

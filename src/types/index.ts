@@ -66,3 +66,6 @@ export type DiceResult = {
 
 /** Global Definition of the four player colours */
 export const PlayerColors = ["#ffffff", "#f87171", "#99f2e6", "#a78bfa"];
+
+/** Player can choose up to two columns per turn. */
+export type PlayerChoice = [number, number | undefined];
