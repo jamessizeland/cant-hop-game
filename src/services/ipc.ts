@@ -46,8 +46,8 @@ export async function chooseColumns(
 }
 
 /** Player has chosen to end their turn. */
-export async function endTurn(): Promise<GameState> {
-  return await invoke<GameState>("end_turn");
+export async function endTurn(forced: boolean): Promise<GameState> {
+  return await invoke<GameState>("end_turn", { forced });
 }
 
 /** Return the current game state. */
