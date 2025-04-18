@@ -7,11 +7,13 @@ import { notifyError } from "./notifications";
  * @param settings - The settings to start the game with.
  * @throws Will throw an error if the game fails to start.
  */
-export async function startGame(settings: SettingsState) {
+export async function startGame(settings: SettingsState): Promise<boolean> {
   try {
     await invoke("start_game", { settings });
+    return true;
   } catch (e) {
     notifyError(`Failed to start game: ${e}`, "StartError");
+    return false;
   }
 }
 
@@ -33,6 +35,10 @@ export async function chooseColumns(
   first: number,
   second?: number
 ): Promise<GameState | undefined> {
+  // convert number to index, as the backend uses 0-based indexing and the user is
+  // choosing a 2d6 number, so we need to subtract 2 from the number.
+  first = first - 2;
+  second = second ? second - 2 : undefined;
   try {
     const state = await invoke<GameState>("choose_columns", { first, second });
     return state;
@@ -44,4 +50,17 @@ export async function chooseColumns(
 /** Player has chosen to end their turn. */
 export async function endTurn(): Promise<GameState> {
   return await invoke<GameState>("end_turn");
+}
+
+/** Return the current game state. */
+export async function getGameState(): Promise<GameState> {
+  return await invoke<GameState>("get_game_state");
+}
+
+/** Generate a random name, can be seeded for reproducibility.
+ * @param seed - Optional seed for random name generation.
+ * @returns A promise that resolves to the generated name.
+ */
+export async function getName(seed?: number): Promise<string> {
+  return await invoke<string>("get_name", { seed });
 }
