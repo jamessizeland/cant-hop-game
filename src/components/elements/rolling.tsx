@@ -1,46 +1,98 @@
 import { motion } from "motion/react";
 import { useState } from "react";
+import { chooseColumns, endTurn, rollDice } from "services/ipc";
+import { notifyError } from "services/notifications";
+import { GameState } from "types";
+
+type RollerProps = {
+  setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;
+};
 
 const diceVariants = {
+  hidden: { opacity: 0, scale: 0.3, rotate: 45, filter: "blur(5px)" },
+  visible: (custom: number) => ({
+    opacity: 1,
+    scale: 1,
+    rotate: 0,
+    filter: "blur(0px)",
+    transition: {
+      delay: custom * 0.1, // Delay for staggered effect
+      duration: 0.8, // Longer duration for a more dramatic effect
+      ease: "easeOut",
+    },
+  }),
+};
+
+const choicesVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: (custom: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: custom * 0.3, duration: 0.5 },
+    transition: {
+      delay: custom * 0.1 + 1, // Adds a delay for the choices (delay after dice animation)
+      duration: 0.5,
+    },
   }),
 };
 
-const DiceRoller: React.FC = () => {
-  const [dice, setDice] = useState<number[]>([]);
-  const [rolling, setRolling] = useState(false);
+const DiceRoller = ({ setGameState }: RollerProps) => {
+  const [dice, setDice] = useState<{
+    dice: number[];
+    choices: [number, number | undefined][];
+  }>({ dice: [], choices: [] });
+  const [hops, setHops] = useState<[number, number | undefined][]>([]);
 
-  const rollDice = () => {
-    setRolling(true);
+  const updateDice = async () => {
     // Clear previous roll if needed.
-    setDice([]);
+    setDice({ dice: [], choices: [] });
     // Small delay before showing result (simulate rolling).
-    setTimeout(() => {
-      // Generate an array of 4 dice with values between 1 and 6.
-      const newDice = Array.from(
-        { length: 4 },
-        () => Math.floor(Math.random() * 6) + 1
-      );
+    setTimeout(async () => {
+      const newDice = await rollDice();
       setDice(newDice);
-      setRolling(false);
-    }, 800);
+    }, 100);
   };
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 p-4">
-      <button
-        onClick={rollDice}
-        disabled={rolling}
-        className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
-      >
-        {rolling ? "Rolling..." : "Roll Dice"}
-      </button>
+      {!dice.dice.length ? (
+        <div className="flex flex-row items-center justify-center space-x-6">
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            transition={{ duration: 0.5 }}
+            onClick={updateDice}
+            className="btn btn-xl bg-green-400 text-black disabled:opacity-50"
+            type="button"
+          >
+            {hops.length ? "Hop?" : "Hop!"}
+          </motion.button>
+          {hops.length > 0 ? (
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={{ duration: 0.5 }}
+              onClick={async () => {
+                const state = await endTurn();
+                setDice({ dice: [], choices: [] });
+                setHops([]);
+                setGameState(state);
+              }}
+              className="btn btn-xl bg-green-400 text-black disabled:opacity-50"
+              type="button"
+            >
+              Stop?
+            </motion.button>
+          ) : (
+            <></>
+          )}
+        </div>
+      ) : (
+        <></>
+      )}
       <div className="flex space-x-4">
-        {dice.map((number, index) => (
+        {dice.dice.map((number, index) => (
           <motion.div
             key={index}
             className="w-16 h-16 bg-white rounded shadow flex items-center justify-center text-2xl font-bold border border-gray-200"
@@ -52,6 +104,63 @@ const DiceRoller: React.FC = () => {
             {number}
           </motion.div>
         ))}
+      </div>
+      <div className="grid grid-flow-col-dense space-x-4">
+        {dice.choices.length ? (
+          dice.choices.map((choice, index) => (
+            <motion.button
+              key={index}
+              className="btn btn-outline btn-primary btn-lg shadow flex items-center justify-center text-2xl font-bold w-max"
+              custom={index}
+              initial="hidden"
+              animate="visible"
+              variants={choicesVariants}
+              type="button"
+              onClick={async () => {
+                setHops((hops) => {
+                  const newHops = [...hops, choice];
+                  console.log("new hops: ", newHops);
+                  return newHops;
+                });
+                const state = await chooseColumns(choice[0], choice[1]);
+                setDice({ dice: [], choices: [] });
+                if (state) {
+                  console.log("updating choices");
+                  setGameState(state);
+                } else {
+                  notifyError(
+                    "Something went wrong choosing columns",
+                    "choiceError"
+                  );
+                }
+              }}
+            >
+              {choice[0]} {choice[1] ? `, ${choice[1]}` : ""}
+            </motion.button>
+          ))
+        ) : dice.dice.length ? (
+          <motion.button
+            className="btn btn-outline btn-primary btn-lg shadow flex items-center justify-center text-2xl font-bold w-max"
+            custom={0}
+            initial="hidden"
+            animate="visible"
+            variants={choicesVariants}
+            type="button"
+            onClick={async () => {
+              const state = await endTurn();
+              setDice({ dice: [], choices: [] });
+              if (state) {
+                setGameState(state);
+              } else {
+                notifyError("Something went wrong ending turn", "endTurnError");
+              }
+            }}
+          >
+            Croaked!
+          </motion.button>
+        ) : (
+          <></>
+        )}
       </div>
     </div>
   );
