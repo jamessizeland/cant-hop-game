@@ -1,8 +1,8 @@
 import LilyPad from "./lilypad";
 import { motion } from "motion/react";
 import { useMemo } from "react";
-import { GiFrog } from "react-icons/gi";
 import { PlayerColors } from "types";
+import { GiFrog2, GiFrogFoot2 } from "./icons";
 
 /** Details of which players are present at this position */
 export type PositionProps = {
@@ -11,6 +11,7 @@ export type PositionProps = {
   player3?: boolean;
   player4?: boolean;
   risker?: boolean;
+  currentPlayer: number;
 };
 
 const PositionMarker = (props: PositionProps) => {
@@ -29,7 +30,7 @@ const PositionMarker = (props: PositionProps) => {
         }}
         transition={{
           repeat: Infinity,
-          repeatType: "loop",
+          repeatType: "reverse",
           ease: "linear",
           duration,
         }}
@@ -44,40 +45,82 @@ export default PositionMarker;
 
 /** Position the frogs within the div.  If there is one frog, place it in the center, if there are more, arrange them. */
 const FrogPositioning = ({
+  currentPlayer,
   player1 = false,
   player2 = false,
   player3 = false,
   player4 = false,
   risker = false,
 }: PositionProps) => {
-  const frogs = [player1, player2, player3, player4];
-  const frogPositions = [
-    { top: "30%", left: "30%" },
-    { top: "70%", left: "70%" },
-    { top: "30%", left: "70%" },
-    { top: "70%", left: "30%" },
+  const frogs = [player1, player2, player3, player4]
+    .map((frog, index) => {
+      return frog ? index : undefined;
+    })
+    .filter((frog) => frog !== undefined);
+  const count = frogs.length;
+
+  const frogPositions1 = [
+    {
+      top: "50%",
+      left: "50%",
+      fontSize: "2rem",
+    },
   ];
+  const frogPositions2 = [
+    { top: "40%", left: "30%", fontSize: "1.8rem" },
+    { top: "60%", left: "60%", fontSize: "1.8rem" },
+  ];
+  const frogPositions3 = [
+    { top: "30%", left: "50%", fontSize: "1.6rem" },
+    { top: "65%", left: "30%", fontSize: "1.6rem" },
+    { top: "65%", left: "70%", fontSize: "1.6rem" },
+  ];
+  const frogPositions4 = [
+    { top: "30%", left: "30%", fontSize: "1.2rem" },
+    { top: "70%", left: "70%", fontSize: "1.2rem" },
+    { top: "30%", left: "70%", fontSize: "1.2rem" },
+    { top: "70%", left: "30%", fontSize: "1.2rem" },
+  ];
+
+  const frogPositions = useMemo(() => {
+    switch (count) {
+      case 1:
+        return frogPositions1;
+      case 2:
+        return frogPositions2;
+      case 3:
+        return frogPositions3;
+      case 4:
+        return frogPositions4;
+      default:
+        return [];
+    }
+  }, [count]);
 
   return (
     <div>
-      {frogs.map(
-        (frog, index) =>
-          frog && (
-            <GiFrog
-              key={index}
-              className={`absolute z-10 text-${PlayerColors[index]}`}
-              style={{
-                top: frogPositions[index]?.top,
-                left: frogPositions[index]?.left,
-                transform: "translate(-50%, -50%)",
-              }}
-            />
-          )
+      {frogs.map((frog, index) =>
+        frog !== undefined ? (
+          <GiFrog2
+            key={index}
+            className={`absolute z-10`}
+            style={{
+              color: PlayerColors[frog],
+              top: frogPositions[index]?.top,
+              left: frogPositions[index]?.left,
+              fontSize: frogPositions[index]?.fontSize,
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+        ) : (
+          <></>
+        )
       )}
       {risker && (
-        <GiFrog
-          className={`absolute z-20 text-black`}
+        <GiFrogFoot2
+          className={`absolute z-20`}
           style={{
+            color: PlayerColors[currentPlayer],
             top: "50%",
             left: "50%",
             fontSize: "1.7rem",
