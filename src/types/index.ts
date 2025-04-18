@@ -21,6 +21,8 @@ export type Column = {
   hops: [number, number, number, number];
   /** Number of hops risked beyond safe.  Must be +ve int */
   risked: number;
+  /** Whether the column is locked */
+  locked: boolean;
 };
 
 /** 11 columns, one for each possible number on 2D6 */
