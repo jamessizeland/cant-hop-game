@@ -68,7 +68,7 @@ pub fn roll_dice(state: tauri::State<GameStateMutex>) -> DiceResult {
     let unavailable: HashSet<usize> = game_state
         .columns
         .iter()
-        .filter(|col| col.locked)
+        .filter(|col| col.locked.is_some())
         .map(|col| col.col)
         .collect();
     println!("Selected columns: {:?}", selected);
@@ -171,9 +171,6 @@ pub fn choose_columns(
 pub fn end_turn(forced: bool, state: tauri::State<GameStateMutex>) -> GameState {
     let mut game_state = state.lock().unwrap();
     game_state.next_player(forced);
-    if !forced {
-        game_state.check_is_over();
-    }
     game_state.clone()
 }
 

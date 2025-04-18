@@ -7,6 +7,7 @@ interface BarProps {
   hops: number[]; // hops for each player
   risked: number; // risked for current player beyond their hops
   currentPlayer: number; // current player
+  winner: number | null; // won for player index
 }
 
 const Bar: React.FC<BarProps> = ({
@@ -15,6 +16,7 @@ const Bar: React.FC<BarProps> = ({
   hops,
   risked,
   currentPlayer,
+  winner,
 }) => {
   return (
     <div className="flex flex-col items-center">
@@ -22,14 +24,23 @@ const Bar: React.FC<BarProps> = ({
       <ul className="steps steps-vertical">
         {Array.from({ length: total }).map((_, idx) => {
           const index = total - idx; // Reverse the index to match the visual representation
-          const players: PositionProps = {
-            currentPlayer,
-            player1: hops[0] === index,
-            player2: hops[1] === index,
-            player3: hops[2] === index,
-            player4: hops[3] === index,
-            risker: hops[currentPlayer] + risked === index,
-          };
+          // if bar has been won, only show the winner on every step
+          const players: PositionProps =
+            winner !== null
+              ? {
+                  currentPlayer: winner,
+                  won: true,
+                }
+              : {
+                  currentPlayer,
+                  player1: hops[0] === index,
+                  player2: hops[1] === index,
+                  player3: hops[2] === index,
+                  player4: hops[3] === index,
+                  risker:
+                    risked !== 0 && hops[currentPlayer] + risked === index,
+                  won: false,
+                };
           return (
             <li key={index} className="flex justify-center items-center">
               <PositionMarker {...players} />
