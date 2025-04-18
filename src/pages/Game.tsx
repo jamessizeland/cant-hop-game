@@ -15,6 +15,7 @@ export function GamePage() {
   const [gameState, setGameState] = useState<GameState>();
   const [demo, setDemo] = useState(false);
   const [playerName, setPlayerName] = useState<string>("");
+  const [gameOver, setGameOver] = useState(false);
 
   useEffect(() => {
     getGameState().then((state) => {
@@ -26,12 +27,30 @@ export function GamePage() {
     console.log("Game State Updated", gameState);
     if (!gameState) return;
     setPlayerName(gameState.settings.players[gameState.current_player]?.name);
+    if (gameState.winner !== null) {
+      setGameOver(true);
+    }
   }, [gameState]);
 
   return (
     <div className="flex flex-col items-center h-screen w-screen">
       {gameState ? (
         <>
+          {gameOver && gameState.winner !== null && (
+            <dialog id="game-over" className="modal modal-open">
+              <div className="modal-box flex justify-center">
+                <h3 className="font-bold text-xl">Winner!</h3>
+                <div className="modal-action flex justify-center">
+                  <button
+                    className="btn"
+                    onClick={() => (window.location.href = "/")}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </dialog>
+          )}
           <TopBar playerName={playerName} setDemo={setDemo} />
           <div
             className="w-screen flex items-center justify-center flex-col py-3 px-5 mt-7"
@@ -47,12 +66,15 @@ export function GamePage() {
                     hops={column.hops}
                     risked={column.risked}
                     currentPlayer={gameState?.current_player}
+                    winner={column.locked}
                   />
                 )
               )}
             </div>
           </div>
-          <DiceRoller setGameState={setGameState} />
+          {gameState.winner === null && (
+            <DiceRoller setGameState={setGameState} />
+          )}
         </>
       ) : (
         <Loader />

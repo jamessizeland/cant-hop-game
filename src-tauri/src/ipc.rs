@@ -65,50 +65,74 @@ pub fn roll_dice(state: tauri::State<GameStateMutex>) -> DiceResult {
         .filter(|col| col.risked != 0)
         .map(|col| col.col)
         .collect();
+    let unavailable: HashSet<usize> = game_state
+        .columns
+        .iter()
+        .filter(|col| col.locked.is_some())
+        .map(|col| col.col)
+        .collect();
     println!("Selected columns: {:?}", selected);
-    let choices = evaluate_moves(dice, selected);
+    let choices = evaluate_moves(dice, &selected, &unavailable);
     println!("Available moves: {:?}", choices);
     DiceResult { dice, choices }
 }
 
 /// Evaluate the available moves from the four dice.
 /// - They must be paired up and cannot be reused.
-/// - `selected` is the list of columns already selected (0–3 of them).
-/// - You can select at most 3 distinct columns total per round,
-///   so any move that would introduce more than 3 is dropped.
-/// - if a “double” move (both sums) is legal, you must take it,
-///   and you must *not* offer either single move from that pairing.
-/// - you can still offer moves that are already selected.
-fn evaluate_moves(dice: [usize; 4], selected: HashSet<usize>) -> HashSet<(usize, Option<usize>)> {
+/// - `selected` is the set of columns already picked this round (0–3 of them).
+/// - `unavailable` is the set of columns already won and cannot be chosen again.
+/// - You can pick at most 3 *new* columns; columns in `selected` don’t count against that cap.
+/// - For each die pairing, if its “double” move (both sums) is legal under the cap and neither column is unavailable,
+///   you *must* offer that double (canonicalized as (min, Some(max))) for that pairing and *not* its singles.
+/// - Otherwise for that pairing, offer any valid single: already in `selected` or new up to the cap,
+///   provided it isn’t unavailable.
+fn evaluate_moves(
+    dice: [usize; 4],
+    selected: &HashSet<usize>,
+    unavailable: &HashSet<usize>,
+) -> HashSet<(usize, Option<usize>)> {
     let mut moves = HashSet::new();
+    // how many new columns we can still add:
+    let cap = 3usize.saturating_sub(selected.len());
 
-    let used = selected.len();
-    // how many *new* columns we can still add:
-    let cap = 3usize.saturating_sub(used);
-
-    // the three ways to pair up 4 dice:
     for &(i, j, k, l) in &[(0, 1, 2, 3), (0, 2, 1, 3), (0, 3, 1, 2)] {
         let first = dice[i] + dice[j];
         let second = dice[k] + dice[l];
 
-        let first_new = !selected.contains(&first);
-        let second_new = !selected.contains(&second);
-        let new_needed = (first_new as usize) + (second_new as usize);
-
-        // If taking *both* would fit under the cap of new columns, force the double…
-        if new_needed <= cap {
-            // canonical order:
-            let (a, b) = if first <= second {
-                (first, second)
-            } else {
-                (second, first)
-            };
-            moves.insert((a, Some(b)));
-            continue;
+        // skip if either column is unavailable
+        if unavailable.contains(&first) || unavailable.contains(&second) {
+            // still consider singles on the available one below
         }
 
-        // …otherwise offer any “single” move that’s either already selected or fits in the cap
+        // Attempt double move: count unique sums
+        if !unavailable.contains(&first) && !unavailable.contains(&second) {
+            let mut needed = HashSet::new();
+            needed.insert(first);
+            needed.insert(second);
+            // how many of those unique sums are new
+            let new_needed = needed
+                .iter()
+                .filter(|&&col| !selected.contains(&col))
+                .count();
+
+            if new_needed <= cap {
+                // canonicalize
+                let (a, b) = if first <= second {
+                    (first, second)
+                } else {
+                    (second, first)
+                };
+                moves.insert((a, Some(b)));
+                // skip singles for this pairing
+                continue;
+            }
+        }
+
+        // Fallback to singles for this pairing
         for &col in &[first, second] {
+            if unavailable.contains(&col) {
+                continue;
+            }
             if selected.contains(&col) || cap >= 1 {
                 moves.insert((col, None));
             }
@@ -147,9 +171,6 @@ pub fn choose_columns(
 pub fn end_turn(forced: bool, state: tauri::State<GameStateMutex>) -> GameState {
     let mut game_state = state.lock().unwrap();
     game_state.next_player(forced);
-    if !forced {
-        game_state.check_is_over();
-    }
     game_state.clone()
 }
 
@@ -161,7 +182,8 @@ mod test {
     fn test_evaluate_moves_no_selected_columns() {
         let dice = [1, 2, 3, 4];
         let selected = HashSet::new();
-        let moves = evaluate_moves(dice, selected);
+        let unavailable = HashSet::new();
+        let moves = evaluate_moves(dice, &selected, &unavailable);
 
         let expected_moves: HashSet<(usize, Option<usize>)> =
             [(4, Some(6)), (5, Some(5)), (3, Some(7))]
@@ -177,7 +199,8 @@ mod test {
         let dice = [1, 2, 3, 4];
         let mut selected = HashSet::new();
         selected.insert(3); // Column 3 is already selected
-        let moves = evaluate_moves(dice, selected);
+        let unavailable = HashSet::new();
+        let moves = evaluate_moves(dice, &selected, &unavailable);
 
         let expected_moves: HashSet<(usize, Option<usize>)> =
             [(4, Some(6)), (5, Some(5)), (3, Some(7))]
@@ -195,7 +218,8 @@ mod test {
         selected.insert(3);
         selected.insert(7);
         selected.insert(6); // Already selected 3 columns
-        let moves = evaluate_moves(dice, selected);
+        let unavailable = HashSet::new();
+        let moves = evaluate_moves(dice, &selected, &unavailable);
 
         let expected_moves: HashSet<(usize, Option<usize>)> =
             [(6, None), (3, Some(7))].iter().cloned().collect();
@@ -205,17 +229,35 @@ mod test {
 
     #[test]
     fn test_evaluate_moves_with_two_selected_columns() {
-        let dice = [1, 2, 3, 4];
+        let dice = [2, 4, 3, 5];
         let mut selected = HashSet::new();
-        selected.insert(3); // Column 3 is already selected
-        selected.insert(9); // Column 4 is already selected
-        let moves = evaluate_moves(dice, selected);
+        selected.insert(6);
+        selected.insert(10);
+        let unavailable = HashSet::new();
+        let moves = evaluate_moves(dice, &selected, &unavailable);
 
         let expected_moves: HashSet<(usize, Option<usize>)> =
-            [(6, None), (4, None), (3, Some(7)), (5, None)]
+            [(6, Some(8)), (7, Some(7)), (5, None), (9, None)]
                 .iter()
                 .cloned()
                 .collect();
+        assert_eq!(moves, expected_moves);
+    }
+
+    #[test]
+    fn test_evaluate_moves_with_unavailable_columns() {
+        let dice = [1, 2, 3, 4];
+        let selected = HashSet::new();
+        let mut unavailable = HashSet::new();
+        unavailable.insert(3); // Column 3 is unavailable
+        let moves = evaluate_moves(dice, &selected, &unavailable);
+
+        let expected_moves: HashSet<(usize, Option<usize>)> =
+            [(4, Some(6)), (5, Some(5)), (7, None)]
+                .iter()
+                .cloned()
+                .collect();
+
         assert_eq!(moves, expected_moves);
     }
 }

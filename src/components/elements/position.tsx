@@ -2,7 +2,7 @@ import LilyPad from "./lilypad";
 import { motion } from "motion/react";
 import { useMemo } from "react";
 import { PlayerColors } from "types";
-import { GiFrog2, GiFrogFoot2 } from "./icons";
+import { GiFrog2, GiFrogFoot2, GiFrogPrince2 } from "./icons";
 
 /** Details of which players are present at this position */
 export type PositionProps = {
@@ -12,6 +12,7 @@ export type PositionProps = {
   player4?: boolean;
   risker?: boolean;
   currentPlayer: number;
+  won: boolean;
 };
 
 const PositionMarker = (props: PositionProps) => {
@@ -51,6 +52,7 @@ const FrogPositioning = ({
   player3 = false,
   player4 = false,
   risker = false,
+  won = false,
 }: PositionProps) => {
   const frogs = [player1, player2, player3, player4]
     .map((frog, index) => {
@@ -99,21 +101,34 @@ const FrogPositioning = ({
 
   return (
     <div>
-      {frogs.map((frog, index) =>
-        frog !== undefined ? (
-          <GiFrog2
-            key={index}
-            className={`absolute z-10`}
-            style={{
-              color: PlayerColors[frog],
-              top: frogPositions[index]?.top,
-              left: frogPositions[index]?.left,
-              fontSize: frogPositions[index]?.fontSize,
-              transform: "translate(-50%, -50%)",
-            }}
-          />
-        ) : (
-          <></>
+      {won ? (
+        <GiFrogPrince2
+          className={`absolute z-20`}
+          style={{
+            color: PlayerColors[currentPlayer],
+            top: "50%",
+            left: "50%",
+            fontSize: "1.7rem",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+      ) : (
+        frogs.map((frog, index) =>
+          frog !== undefined ? (
+            <GiFrog2
+              key={index}
+              className={`absolute z-10`}
+              style={{
+                color: PlayerColors[frog],
+                top: frogPositions[index]?.top,
+                left: frogPositions[index]?.left,
+                fontSize: frogPositions[index]?.fontSize,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          ) : (
+            <></>
+          )
         )
       )}
       {risker && (
@@ -123,7 +138,7 @@ const FrogPositioning = ({
             color: PlayerColors[currentPlayer],
             top: "50%",
             left: "50%",
-            fontSize: "1.7rem",
+            fontSize: "2.2rem",
             transform: "translate(-50%, -50%)",
           }}
         />
