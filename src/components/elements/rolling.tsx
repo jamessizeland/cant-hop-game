@@ -2,10 +2,11 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { chooseColumns, endTurn, rollDice } from "services/ipc";
 import { notifyError } from "services/notifications";
-import { GameState, PlayerChoice } from "types";
+import { GameState, PlayerChoice, PlayerColors } from "types";
 
 type RollerProps = {
   setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;
+  playerIndex: number;
 };
 
 const diceVariants = {
@@ -35,7 +36,7 @@ const choicesVariants = {
   }),
 };
 
-const DiceRoller = ({ setGameState }: RollerProps) => {
+const DiceRoller = ({ setGameState, playerIndex }: RollerProps) => {
   const [dice, setDice] = useState<{
     dice: number[];
     choices: PlayerChoice[];
@@ -76,11 +77,11 @@ const DiceRoller = ({ setGameState }: RollerProps) => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-6 p-4">
+    <div className="flex flex-col items-center justify-center space-y-6 p-2">
       {!dice.dice.length ? (
         <div className="flex flex-row items-center justify-center space-x-6">
           <motion.button
-            className="btn btn-xl bg-green-400 text-black disabled:opacity-50"
+            className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
             type="button"
             onClick={async () => await updateDice()}
             // Animation options
@@ -89,11 +90,11 @@ const DiceRoller = ({ setGameState }: RollerProps) => {
             exit={{ scale: 0 }}
             transition={{ duration: 0.1 }}
           >
-            {hops.length ? "Hop?" : "Hop!"}
+            Hop
           </motion.button>
           {hops.length > 0 ? (
             <motion.button
-              className="btn btn-xl bg-green-400 text-black disabled:opacity-50"
+              className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
               type="button"
               onClick={async () => await endPlayerTurn(false)}
               // Animation options
@@ -102,7 +103,7 @@ const DiceRoller = ({ setGameState }: RollerProps) => {
               exit={{ scale: 0 }}
               transition={{ duration: 0.1 }}
             >
-              Stop?
+              Stop
             </motion.button>
           ) : (
             <></>
@@ -111,7 +112,7 @@ const DiceRoller = ({ setGameState }: RollerProps) => {
       ) : (
         <></>
       )}
-      <div className="flex space-x-4">
+      <div className="flex space-x-3">
         {dice.dice.map((number, index) => (
           <motion.div
             key={index}
@@ -126,12 +127,16 @@ const DiceRoller = ({ setGameState }: RollerProps) => {
           </motion.div>
         ))}
       </div>
-      <div className="flex flex-row flex-wrap space-x-4 space-y-4 justify-center">
+      <div className="flex flex-row flex-wrap space-x-3 space-y-3 justify-center">
         {dice.choices.length ? (
           dice.choices.map((choice, index) => (
             <motion.button
               key={index}
               className="btn btn-outline btn-primary btn-lg shadow justify-center text-2xl font-bold h-16 min-w-16"
+              style={{
+                borderColor: PlayerColors[playerIndex],
+                color: PlayerColors[playerIndex],
+              }}
               type="button"
               onClick={async () => await makeChoice(choice)}
               // Animation options
@@ -145,7 +150,11 @@ const DiceRoller = ({ setGameState }: RollerProps) => {
           ))
         ) : dice.dice.length ? (
           <motion.button
-            className="btn btn-outline btn-primary btn-lg justify-center text-2xl font-bold w-max"
+            className="btn btn-outline btn-lg justify-center text-2xl font-bold w-max"
+            style={{
+              borderColor: PlayerColors[playerIndex],
+              color: PlayerColors[playerIndex],
+            }}
             type="button"
             onClick={async () => await endPlayerTurn(true)}
             // Animation options

@@ -8,6 +8,8 @@ Only planning on local multiplayer so far.
 
 - [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 
+![demo](./img/cant-hop.webm)
+
 ## Progress
 
 ![splash](./img/cant-hop-splash.png)
