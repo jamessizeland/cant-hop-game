@@ -63,10 +63,9 @@ pub struct Column {
 
 impl Debug for Column {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let locked = if self.locked.is_some() {
-            "🔒"
-        } else {
-            "🔒"
+        let locked = match self.locked {
+            Some(_) => '🔒',
+            None => '🔓',
         };
         writeln!(
             f,

@@ -52,10 +52,7 @@ pub fn get_name(seed: Option<u64>) -> String {
 pub fn roll_dice(state: tauri::State<GameStateMutex>) -> DiceResult {
     const DICE_SIDES: u8 = 6;
     const DICE_COUNT: usize = 4;
-    let mut dice: [usize; DICE_COUNT] = [0; DICE_COUNT];
-    for i in 0..DICE_COUNT {
-        dice[i] = (random::<u8>() % DICE_SIDES + 1) as usize;
-    }
+    let dice = [0; DICE_COUNT].map(|_| (random::<u8>() % DICE_SIDES + 1) as usize);
     println!("Rolled dice: {:?}", dice);
     let game_state = state.lock().unwrap();
 

@@ -23,7 +23,7 @@ pub fn generate_name(seed: Option<u64>) -> String {
         "Frogmageddon", "Frogsworth", "Croakopolis", "Toadstool", "Warts", "Bubba", "Polly", 
         "Swampologist", "Hops-a-lot", "Ribber", "Frogspawn", "Jumpy Jack", "Swamp Thing", "Croaklet"
     ];
-    let seed = seed.unwrap_or_else(|| rand::random());
+    let seed = seed.unwrap_or_else(rand::random);
     let mut rng = StdRng::seed_from_u64(seed);
 
     let part1 = FIRST.choose(&mut rng).unwrap_or(&"");
