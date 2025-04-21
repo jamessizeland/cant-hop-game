@@ -57,7 +57,7 @@ export type GameState = {
   /** 11 columns, one for each possible number on 2D6 */
   columns: Columns;
   /** Index of winning player */
-  winner: number | null;
+  winner: Player | null;
 };
 
 /** Result of rolling the four dice */
