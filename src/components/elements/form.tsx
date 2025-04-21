@@ -125,10 +125,10 @@ function PlayerForm({ first, second }: { first: string; second: string }) {
                           subField.setValue(e.target.value as PlayerMode)
                         }
                       >
-                        <option value="human">Human</option>
-                        <option value="safe">AI: Safe</option>
-                        <option value="normal">AI: Normal</option>
-                        <option value="risky">AI: Risky</option>
+                        <option value="Human">Human</option>
+                        <option value="Safe">AI: Safe</option>
+                        <option value="Normal">AI: Normal</option>
+                        <option value="Risky">AI: Risky</option>
                       </select>
                     )}
                   </form.Field>

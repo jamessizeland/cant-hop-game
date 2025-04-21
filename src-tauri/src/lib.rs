@@ -1,4 +1,5 @@
 mod ipc;
+mod logic;
 mod state;
 mod utils;
 
