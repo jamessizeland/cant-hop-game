@@ -405,7 +405,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cant-stop"
+name = "cant-hop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
