@@ -38,7 +38,8 @@ const Bar: React.FC<BarProps> = ({
                   player3: hops[2] === index,
                   player4: hops[3] === index,
                   risker:
-                    risked !== 0 && hops[currentPlayer] + risked === index,
+                    risked !== 0 &&
+                    Math.min(hops[currentPlayer] + risked, total) === index,
                   won: false,
                 };
           return (

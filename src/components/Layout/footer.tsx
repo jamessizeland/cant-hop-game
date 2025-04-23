@@ -12,7 +12,7 @@ const Footer = () => {
         href="https://github.com/jamessizeland/cant-hop-game"
         className="flex items-center border border-gray-200 rounded-lg p-2 shadow-md hover:bg-gray-100 active:bg-gray-200 transition-colors duration-200 ease-in-out"
       >
-        <p className="mr-3">James Sizeland, 2025</p>
+        <p className="mr-3">2025</p>
         <IoLogoGithub className="h-7 w-auto" />
       </a>
     </div>

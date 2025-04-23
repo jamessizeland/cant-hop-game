@@ -2,7 +2,7 @@
 import { useForm } from "@tanstack/react-form";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { GiFrogFoot } from "react-icons/gi";
+import { GiFrogFoot, GiFrogPrince } from "react-icons/gi";
 import { getName, startGame } from "services/ipc";
 import { PlayerColors, PlayerMode, SettingsState } from "types";
 
@@ -87,10 +87,10 @@ function PlayerForm({ first, second }: { first: string; second: string }) {
               {field.state.value.map((_, index) => (
                 <div
                   key={index}
-                  className="flex flex-row items-center justify-center h-10 my-4 space-x-1"
+                  className="flex flex-row items-center justify-center h-10 my-4 space-x-2"
                 >
-                  <GiFrogFoot
-                    className={`w-24 h-24`}
+                  <GiFrogPrince
+                    className={`w-20 h-20`}
                     style={{
                       color: PlayerColors[index],
                     }}
@@ -98,7 +98,7 @@ function PlayerForm({ first, second }: { first: string; second: string }) {
                   <form.Field name={`players[${index}].name`}>
                     {(subField) => (
                       <input
-                        className="p-2 h-full border rounded max-w-fit input"
+                        className="p-2 h-full border rounded input"
                         type="text"
                         placeholder="Name"
                         value={subField.state.value}
@@ -119,7 +119,7 @@ function PlayerForm({ first, second }: { first: string; second: string }) {
                   <form.Field name={`players[${index}].mode`}>
                     {(subField) => (
                       <select
-                        className="h-full border rounded select mx-2 min-w-fit"
+                        className="h-full border rounded select min-w-fit"
                         value={subField.state.value}
                         onChange={(e) =>
                           subField.setValue(e.target.value as PlayerMode)
