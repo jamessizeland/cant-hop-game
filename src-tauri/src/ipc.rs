@@ -18,6 +18,7 @@ pub fn start_game(
     let mut game_state = state.lock().unwrap();
     *game_state = Default::default();
     game_state.settings = settings;
+    game_state.in_progress = true;
     println!("Starting New Game");
     println!("{:?}", game_state);
     Ok(())
@@ -31,10 +32,9 @@ pub fn get_game_state(state: tauri::State<GameStateMutex>) -> GameState {
 }
 
 #[tauri::command]
-pub fn stop_game() -> tauri::Result<()> {
-    // Here you would stop your game logic
-    // For example, you could signal the game thread or process to stop
-    // This is just a placeholder for demonstration purposes
+pub fn stop_game(state: tauri::State<GameStateMutex>) -> tauri::Result<()> {
+    let mut game_state = state.lock().unwrap();
+    *game_state = Default::default();
     println!("Game stopped!");
     Ok(())
 }

@@ -86,6 +86,7 @@ pub type GameStateMutex = std::sync::Mutex<GameState>;
 #[derive(Clone, Serialize, Deserialize)]
 /// Game state information
 pub struct GameState {
+    pub in_progress: bool,
     pub settings: SettingsState,
     pub current_player: usize,
     pub columns: [Column; 11],
@@ -125,7 +126,9 @@ impl GameState {
             self.check_completed_columns();
             self.check_is_over();
         }
-        self.current_player = (self.current_player + 1) % self.settings.players.len();
+        if self.winner.is_none() {
+            self.current_player = (self.current_player + 1) % self.settings.players.len();
+        }
     }
 
     /// Check if the game is over
@@ -157,6 +160,7 @@ impl GameState {
 impl Default for GameState {
     fn default() -> Self {
         Self {
+            in_progress: false,
             settings: SettingsState {
                 players: vec![
                     Player {

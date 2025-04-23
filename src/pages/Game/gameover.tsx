@@ -1,3 +1,4 @@
+import { stopGame } from "services/ipc";
 import { GameState, PlayerColors } from "types";
 
 type GameOverModalProps = {
@@ -9,7 +10,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
     return null; // Don't render the modal if there's no winner
   }
   const winnerName = gameState.winner.name;
-  const winnerColor = PlayerColors[gameState.winner.id];
+  const winnerColor = PlayerColors[gameState.winner.id - 1];
 
   return (
     <dialog id="game-over" className="modal modal-open">
@@ -25,7 +26,13 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
           {winnerName} Wins!
         </h3>
         <div className="modal-action flex justify-center">
-          <button className="btn" onClick={() => (window.location.href = "/")}>
+          <button
+            className="btn"
+            onClick={async () => {
+              await stopGame();
+              window.location.href = "/";
+            }}
+          >
             Close
           </button>
         </div>

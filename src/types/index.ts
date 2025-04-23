@@ -50,6 +50,8 @@ export type SettingsState = {
 
 /** Game state information */
 export type GameState = {
+  /** Whether the game is in progress, used for resume behaviour */
+  in_progress: boolean;
   /** Settings submitted at the start of the game */
   settings: SettingsState;
   /** Index of current player */

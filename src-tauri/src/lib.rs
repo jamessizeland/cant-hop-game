@@ -11,6 +11,7 @@ mod utils;
 pub fn run() {
     let (tx, rx) = channel::<Message>(5);
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| bot_service(app, rx))
         .manage(state::GameStateMutex::default())
