@@ -23,6 +23,8 @@ body {
 
   color: var(--color);
   background-color: var(--background-color);
+  touch-action: pan-x pan-y;       /* block pinch‐zoom & pinch‐rotate */
+  overscroll-behavior: none;       /* block edge‐swipe navigations */
 }
 
 code {

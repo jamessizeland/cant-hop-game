@@ -9,7 +9,7 @@ const Footer = () => {
     <div className="fixed bottom-0 w-full flex justify-center p-2 items-center">
       <a
         target="_blank"
-        href="https://github.com/jamessizeland/cant-stop-game"
+        href="https://github.com/jamessizeland/cant-hop-game"
         className="flex items-center border border-gray-200 rounded-lg p-2 shadow-md hover:bg-gray-100 active:bg-gray-200 transition-colors duration-200 ease-in-out"
       >
         <p className="mr-3">James Sizeland, 2025</p>

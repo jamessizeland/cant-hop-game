@@ -1,3 +1,3 @@
-package com.cant_stop.app
+package com.cant_hop.app
 
 class MainActivity : TauriActivity()
