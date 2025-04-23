@@ -1,6 +1,11 @@
-use std::{collections::HashSet, fmt::Debug};
+use std::{
+    collections::HashSet,
+    fmt::Debug,
+    sync::{Arc, Mutex},
+};
 
 use serde::{Deserialize, Serialize};
+use tauri_plugin_store::Store;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettingsState {
@@ -81,7 +86,7 @@ pub struct DiceResult {
     pub choices: HashSet<(usize, Option<usize>)>,
 }
 
-pub type GameStateMutex = std::sync::Mutex<GameState>;
+pub type GameStateMutex = Arc<Mutex<GameState>>;
 
 #[derive(Clone, Serialize, Deserialize)]
 /// Game state information
@@ -154,6 +159,16 @@ impl GameState {
                     .push(column.col);
             }
         }
+    }
+    /// Update game state from disk
+    pub fn read_from_store<R: tauri::Runtime>(&mut self, store: &Store<R>) {
+        *self = serde_json::from_value(store.get("state").unwrap_or_default()).unwrap_or_default();
+    }
+    /// Save game state to disk
+    pub fn write_to_store<R: tauri::Runtime>(&self, store: &Store<R>) -> anyhow::Result<()> {
+        let state = serde_json::to_value(self.clone())?;
+        store.set("state", state);
+        Ok(())
     }
 }
 
