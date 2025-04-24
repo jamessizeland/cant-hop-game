@@ -1,5 +1,5 @@
 import LilyPad from "./lilypad";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useMemo } from "react";
 import { PlayerColors } from "types";
 import { GiFrog2, GiFrogFoot2, GiFrogPrince2 } from "./icons";
@@ -136,43 +136,65 @@ const FrogPositioning = ({
           />
         ))
       )}
-      {risker && !won && (
-        <>
-          {/* Concentric Water Ripple Effect */}
-          {Array.from({ length: numberOfRings }).map((_, index) => (
+      <AnimatePresence>
+        {risker && !won && (
+          <>
+            {/* Concentric Water Ripple Effect */}
+            {Array.from({ length: numberOfRings }).map((_, index) => (
+              <motion.div
+                key={`ripple-${index}`}
+                className="absolute -z-10 rounded-full pointer-events-none"
+                style={{
+                  top: "50%",
+                  left: "50%",
+                  borderWidth: "2px", // Increased border width for definition
+                  borderColor: "rgba(17, 216, 230, 1)", // Kept color opaque
+                  width: "60px", // Use base size variable
+                  height: "60px", // Use base size variable
+                  transform: "translate(-50%, -50%)", // Center precisely
+                }}
+                initial={{ width: "10px", height: "10px", opacity: 1 }} // Start invisible (scale 0), slightly reduced initial opacity
+                animate={{ width: "80px", height: "80px", opacity: 0 }} // Expand and fade out
+                transition={{
+                  delay: index * ringDelay, // Stagger the start time
+                  duration: ringDuration,
+                  ease: "easeOut", // Standard ease out
+                }}
+              />
+            ))}
+            {/* Frog Foot used to indicate a risked position. */}
             <motion.div
-              key={`ripple-${index}`}
-              className="absolute z-15 rounded-full pointer-events-none"
+              key="frog-foot" // Need a consistent key for AnimatePresence
+              className="absolute z-20" // Foot on top
               style={{
                 top: "50%",
                 left: "50%",
-                borderWidth: "2px", // Increased border width for definition
-                borderColor: "rgba(173, 216, 230, 1)", // Kept color opaque
-                width: "60px", // Use base size variable
-                height: "60px", // Use base size variable
-                transform: "translate(-50%, -50%)", // Center precisely
               }}
-              initial={{ width: "5px", height: "5px", opacity: 1 }} // Start invisible (scale 0), slightly reduced initial opacity
-              animate={{ width: "80px", height: "80px", opacity: 0 }} // Expand and fade out
-              transition={{
-                delay: index * ringDelay, // Stagger the start time
-                duration: ringDuration,
-                ease: "easeOut", // Standard ease out
+              initial={{ y: "-70%", x: "-50%", scale: 0.5, opacity: 0 }} // Start above, small, and invisible
+              animate={{
+                y: "-50%", // Move down to center vertically
+                x: "-50%", // Keep centered horizontally
+                scale: 1, // Scale up to full size
+                opacity: 1, // Fade in
+                transition: { duration: 0.2, ease: "easeOut" },
               }}
-            />
-          ))}
-          <GiFrogFoot2
-            className={`absolute z-20`}
-            style={{
-              color: PlayerColors[currentPlayer],
-              top: "50%",
-              left: "50%",
-              fontSize: "2.2rem",
-              transform: "translate(-50%, -50%)",
-            }}
-          />
-        </>
-      )}
+              exit={{
+                y: "-100%", // Move further up
+                scale: 0.3, // Shrink slightly
+                opacity: 0, // Fade out
+                transition: { duration: 0.2, ease: "easeIn" },
+              }}
+            >
+              <GiFrogFoot2
+                style={{
+                  color: PlayerColors[currentPlayer],
+                  fontSize: "2.2rem",
+                }}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
