@@ -6,8 +6,7 @@ import { GameState, PlayerChoice, PlayerColors } from "types";
 
 type RollerProps = {
   setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;
-  playerIndex: number;
-  hops: number;
+  gameState: GameState;
 };
 
 const diceVariants = {
@@ -37,7 +36,8 @@ const choicesVariants = {
   }),
 };
 
-const DiceRoller = ({ setGameState, playerIndex, hops }: RollerProps) => {
+const DiceRoller = ({ setGameState, gameState }: RollerProps) => {
+  const playerIndex = gameState.current_player;
   const [dice, setDice] = useState<{
     dice: number[];
     choices: PlayerChoice[];
@@ -86,7 +86,7 @@ const DiceRoller = ({ setGameState, playerIndex, hops }: RollerProps) => {
           >
             Hop
           </motion.button>
-          {hops > 0 ? (
+          {gameState.hops > 0 ? (
             <motion.button
               className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
               type="button"

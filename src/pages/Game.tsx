@@ -44,11 +44,7 @@ export function GamePage() {
             <GameBoard gameState={gameState} demo={demo} />
           </div>
           {gameState.winner === null && (
-            <DiceRoller
-              setGameState={setGameState}
-              playerIndex={gameState.current_player}
-              hops={gameState.hops}
-            />
+            <DiceRoller setGameState={setGameState} gameState={gameState} />
           )}
         </>
       ) : (
