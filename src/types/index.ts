@@ -66,7 +66,7 @@ export type GameState = {
 
 /** Result of rolling the four dice */
 export type DiceResult = {
-  dice: [number, number, number, number];
+  dice: number[];
   choices: [number, number | undefined][];
 };
 
