@@ -1,47 +1,37 @@
-import { motion } from "motion/react";
-import { useState } from "react";
-import { chooseColumns, endTurn, rollDice } from "services/ipc";
+import React, { useEffect, useState } from "react";
+import {
+  aiCheckContinue,
+  chooseColumns,
+  endTurn,
+  rollDice,
+} from "services/ipc";
 import { notifyError } from "services/notifications";
-import { GameState, PlayerChoice, PlayerColors } from "types";
+import { DiceResult, GameState, PlayerChoice } from "types";
+import DiceContainer from "./rolling/dice";
+import ChoiceContainer from "./rolling/choice";
+import TurnStartContainer from "./rolling/turnStart";
 
 type RollerProps = {
   setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;
   gameState: GameState;
 };
 
-const diceVariants = {
-  hidden: { opacity: 0, scale: 0.3, rotate: 45, filter: "blur(5px)" },
-  visible: (custom: number) => ({
-    opacity: 1,
-    scale: 1,
-    rotate: 0,
-    filter: "blur(0px)",
-    transition: {
-      delay: custom * 0.1, // Delay for staggered effect
-      duration: 0.4, // Longer duration for a more dramatic effect
-      ease: "easeOut",
-    },
-  }),
-};
-
-const choicesVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (custom: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: custom * 0.1 + 0.5, // Adds a delay for the choices (delay after dice animation)
-      duration: 0.5,
-    },
-  }),
-};
-
-const DiceRoller = ({ setGameState, gameState }: RollerProps) => {
+const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
   const playerIndex = gameState.current_player;
-  const [dice, setDice] = useState<{
-    dice: number[];
-    choices: PlayerChoice[];
-  }>({ dice: [], choices: [] });
+  const player = gameState.settings.players[playerIndex];
+  const [dice, setDice] = useState<DiceResult>({ dice: [], choices: [] });
+
+  useEffect(() => {
+    if (player.mode !== "Human") {
+      setTimeout(async () => {
+        aiCheckContinue().then((isContinue) => {
+          if (!isContinue) {
+            endPlayerTurn(false);
+          }
+        });
+      }, 500);
+    }
+  }, [gameState]);
 
   const updateDice = async () => {
     // Clear previous roll if needed.
@@ -72,97 +62,22 @@ const DiceRoller = ({ setGameState, gameState }: RollerProps) => {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
-      {!dice.dice.length ? (
-        <div className="flex flex-row items-center justify-center space-x-6">
-          <motion.button
-            className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
-            type="button"
-            onClick={async () => await updateDice()}
-            // Animation options
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            transition={{ duration: 0.1 }}
-          >
-            Hop
-          </motion.button>
-          {gameState.hops > 0 ? (
-            <motion.button
-              className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
-              type="button"
-              onClick={async () => await endPlayerTurn(false)}
-              // Animation options
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              transition={{ duration: 0.1 }}
-            >
-              Stop
-            </motion.button>
-          ) : (
-            <></>
-          )}
-        </div>
-      ) : (
-        <></>
+      {dice.dice.length == 0 && (
+        <TurnStartContainer
+          mode={player.mode}
+          hops={gameState.hops}
+          updateDice={updateDice}
+          endPlayerTurn={endPlayerTurn}
+        />
       )}
-      <div className="flex space-x-3">
-        {dice.dice.map((number, index) => (
-          <motion.div
-            key={index}
-            className="w-16 h-16 bg-white rounded shadow flex items-center justify-center text-2xl font-bold border border-gray-200"
-            // Animation options
-            custom={index}
-            initial="hidden"
-            animate="visible"
-            variants={diceVariants}
-          >
-            {number}
-          </motion.div>
-        ))}
-      </div>
-      <div className="flex flex-row flex-wrap space-x-3 space-y-3 justify-center">
-        {dice.choices.length ? (
-          dice.choices.map((choice, index) => (
-            <motion.button
-              key={index}
-              className="btn btn-outline btn-primary btn-lg shadow justify-center text-2xl font-bold h-16 min-w-16"
-              style={{
-                borderColor: PlayerColors[playerIndex],
-                color: PlayerColors[playerIndex],
-              }}
-              type="button"
-              onClick={async () => await makeChoice(choice)}
-              // Animation options
-              custom={index}
-              initial="hidden"
-              animate="visible"
-              variants={choicesVariants}
-            >
-              {choice[0]} {choice[1] ? `& ${choice[1]}` : ""}
-            </motion.button>
-          ))
-        ) : dice.dice.length ? (
-          <motion.button
-            className="btn btn-outline btn-lg justify-center text-2xl font-bold w-max"
-            style={{
-              borderColor: PlayerColors[playerIndex],
-              color: PlayerColors[playerIndex],
-            }}
-            type="button"
-            onClick={async () => await endPlayerTurn(true)}
-            // Animation options
-            custom={0}
-            initial="hidden"
-            animate="visible"
-            variants={choicesVariants}
-          >
-            Croaked!
-          </motion.button>
-        ) : (
-          <></>
-        )}
-      </div>
+      <DiceContainer playerIndex={playerIndex} dice={dice.dice} />
+      <ChoiceContainer
+        dice={dice}
+        playerIndex={playerIndex}
+        mode={player.mode}
+        endPlayerTurn={endPlayerTurn}
+        makeChoice={makeChoice}
+      />
     </div>
   );
 };
