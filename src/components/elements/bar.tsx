@@ -21,7 +21,7 @@ const Bar: React.FC<BarProps> = ({
   return (
     <div className="flex flex-col items-center">
       <h1 className="text-white">{value}</h1>
-      <ul className="steps steps-vertical">
+      <ul className="steps steps-vertical overflow-visible">
         {Array.from({ length: total }).map((_, idx) => {
           const index = total - idx; // Reverse the index to match the visual representation
           // if bar has been won, only show the winner on every step
@@ -43,7 +43,7 @@ const Bar: React.FC<BarProps> = ({
                   won: false,
                 };
           return (
-            <li key={index} className="flex justify-center items-center">
+            <li key={index} className="">
               <PositionMarker {...players} />
             </li>
           );

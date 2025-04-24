@@ -17,27 +17,26 @@ export type PositionProps = {
 
 const PositionMarker = (props: PositionProps) => {
   // Generate random initial rotation between -10 and 10 degrees.
-  const initialRotation = useMemo(() => Math.random() * 20 - 10, []);
-  // Define a random duration for continuous rotation to add natural variation.
-  const duration = useMemo(() => 100 + Math.random() * 10, []);
+  const initialRotation = useMemo(() => Math.random() * 360, []);
 
   return (
-    <div className="relative w-8 h-auto">
-      <FrogPositioning {...props} />
-      <motion.div
-        initial={{ rotate: initialRotation, scale: 1.0 }}
-        animate={{
-          rotate: initialRotation + Math.random() > 0.5 ? 360 : -360,
-        }}
-        transition={{
-          repeat: Infinity,
-          repeatType: "reverse",
-          ease: "linear",
-          duration,
+    <div className="relative w-8 h-8 flex items-center justify-center">
+      {/* Render LilyPad first so it's naturally behind FrogPositioning */}
+      <div
+        className="absolute inset-0 z-0" // Position absolutely to fill parent, base z-index
+        style={{
+          rotate: `${initialRotation}deg`,
         }}
       >
-        <LilyPad className="w-full h-auto" />
-      </motion.div>
+        {/* Ensure LilyPad fills its motion container */}
+        <LilyPad className="w-full h-full" />
+      </div>
+
+      {/* FrogPositioning is rendered on top of the LilyPad */}
+      {/* It needs to be absolutely positioned to overlay correctly */}
+      <div className="absolute inset-0">
+        <FrogPositioning {...props} />
+      </div>
     </div>
   );
 };
@@ -54,11 +53,15 @@ const FrogPositioning = ({
   risker = false,
   won = false,
 }: PositionProps) => {
-  const frogs = [player1, player2, player3, player4]
-    .map((frog, index) => {
-      return frog ? index : undefined;
-    })
-    .filter((frog) => frog !== undefined);
+  const frogs = useMemo(
+    () =>
+      [player1, player2, player3, player4]
+        .map((frog, index) => {
+          return frog ? index : undefined;
+        })
+        .filter((frog) => frog !== undefined),
+    [player1, player2, player3, player4]
+  );
   const count = frogs.length;
 
   const frogPositions1 = [
@@ -99,8 +102,14 @@ const FrogPositioning = ({
     }
   }, [count]);
 
+  // --- Configuration for Concentric Rings ---
+  const numberOfRings = 3; // How many rings to show
+  const ringDelay = 0.5; // Delay (in seconds) between each ring starting
+  const ringDuration = 2; // Duration of each ring's animation
+  // --- End Configuration ---
+
   return (
-    <div>
+    <div className="absolute inset-0 w-full h-full">
       {won ? (
         <GiFrogPrince2
           className={`absolute z-20`}
@@ -113,35 +122,56 @@ const FrogPositioning = ({
           }}
         />
       ) : (
-        frogs.map((frog, index) =>
-          frog !== undefined ? (
-            <GiFrog2
-              key={index}
-              className={`absolute z-10`}
+        frogs.map((frogIndex, arrayIndex) => (
+          <GiFrog2
+            key={frogIndex}
+            className={`absolute z-10`}
+            style={{
+              color: PlayerColors[frogIndex],
+              top: frogPositions[arrayIndex]?.top ?? "50%",
+              left: frogPositions[arrayIndex]?.left ?? "50%",
+              fontSize: frogPositions[arrayIndex]?.fontSize ?? "1.5rem",
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+        ))
+      )}
+      {risker && !won && (
+        <>
+          {/* Concentric Water Ripple Effect */}
+          {Array.from({ length: numberOfRings }).map((_, index) => (
+            <motion.div
+              key={`ripple-${index}`}
+              className="absolute z-15 rounded-full pointer-events-none"
               style={{
-                color: PlayerColors[frog],
-                top: frogPositions[index]?.top,
-                left: frogPositions[index]?.left,
-                fontSize: frogPositions[index]?.fontSize,
-                transform: "translate(-50%, -50%)",
+                top: "50%",
+                left: "50%",
+                borderWidth: "2px", // Increased border width for definition
+                borderColor: "rgba(173, 216, 230, 1)", // Kept color opaque
+                width: "60px", // Use base size variable
+                height: "60px", // Use base size variable
+                transform: "translate(-50%, -50%)", // Center precisely
+              }}
+              initial={{ width: "5px", height: "5px", opacity: 1 }} // Start invisible (scale 0), slightly reduced initial opacity
+              animate={{ width: "80px", height: "80px", opacity: 0 }} // Expand and fade out
+              transition={{
+                delay: index * ringDelay, // Stagger the start time
+                duration: ringDuration,
+                ease: "easeOut", // Standard ease out
               }}
             />
-          ) : (
-            <></>
-          )
-        )
-      )}
-      {risker && (
-        <GiFrogFoot2
-          className={`absolute z-20`}
-          style={{
-            color: PlayerColors[currentPlayer],
-            top: "50%",
-            left: "50%",
-            fontSize: "2.2rem",
-            transform: "translate(-50%, -50%)",
-          }}
-        />
+          ))}
+          <GiFrogFoot2
+            className={`absolute z-20`}
+            style={{
+              color: PlayerColors[currentPlayer],
+              top: "50%",
+              left: "50%",
+              fontSize: "2.2rem",
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+        </>
       )}
     </div>
   );
