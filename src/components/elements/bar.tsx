@@ -12,14 +12,14 @@ interface BarProps {
 
 const Bar: React.FC<BarProps> = ({
   value,
-  total = 12,
+  total,
   hops,
   risked,
   currentPlayer,
   winner,
 }) => {
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center" id={`bar-${value}`}>
       <h1 className="text-white">{value}</h1>
       <ul className="steps steps-vertical overflow-visible">
         {Array.from({ length: total }).map((_, idx) => {
