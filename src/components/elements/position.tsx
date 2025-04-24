@@ -176,13 +176,13 @@ const FrogPositioning = ({
                 x: "-50%", // Keep centered horizontally
                 scale: 1, // Scale up to full size
                 opacity: 1, // Fade in
-                transition: { duration: 0.2, ease: "easeOut" },
+                transition: { duration: 0.1, ease: "easeOut" },
               }}
               exit={{
                 y: "-100%", // Move further up
                 scale: 0.3, // Shrink slightly
                 opacity: 0, // Fade out
-                transition: { duration: 0.2, ease: "easeIn" },
+                transition: { duration: 0.1, ease: "easeIn" },
               }}
             >
               <GiFrogFoot2
