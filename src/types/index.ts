@@ -56,9 +56,11 @@ export type GameState = {
   settings: SettingsState;
   /** Index of current player */
   current_player: number;
+  /** Hops made in current run by current player */
+  hops: number;
   /** 11 columns, one for each possible number on 2D6 */
   columns: Columns;
-  /** Index of winning player */
+  /** Info of winning player */
   winner: Player | null;
 };
 

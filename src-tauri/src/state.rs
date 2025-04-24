@@ -94,6 +94,8 @@ pub struct GameState {
     pub in_progress: bool,
     pub settings: SettingsState,
     pub current_player: usize,
+    /// Hops made in current run by current player
+    pub hops: usize,
     pub columns: [Column; 11],
     pub winner: Option<Player>,
 }
@@ -132,6 +134,7 @@ impl GameState {
             self.check_is_over();
         }
         if self.winner.is_none() {
+            self.hops = 0;
             self.current_player = (self.current_player + 1) % self.settings.players.len();
         }
     }
@@ -194,6 +197,7 @@ impl Default for GameState {
                 win_cols: 3,
             },
             current_player: 0,
+            hops: 0,
             columns: generate_columns(),
             winner: None,
         }

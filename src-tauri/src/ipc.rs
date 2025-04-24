@@ -107,6 +107,7 @@ pub fn choose_columns(
         col2.risked += 1;
     };
     println!("Risked columns: {:?}", game_state);
+    game_state.hops += 1;
     let store = app
         .app_handle()
         .store(STORE)
