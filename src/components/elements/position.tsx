@@ -104,8 +104,8 @@ const FrogPositioning = ({
 
   // --- Configuration for Concentric Rings ---
   const numberOfRings = 3; // How many rings to show
-  const ringDelay = 0.5; // Delay (in seconds) between each ring starting
-  const ringDuration = 2; // Duration of each ring's animation
+  const ringDelay = 0.3; // Delay (in seconds) between each ring starting
+  const ringDuration = 1; // Duration of each ring's animation
   // --- End Configuration ---
 
   return (
@@ -148,13 +148,17 @@ const FrogPositioning = ({
                   top: "50%",
                   left: "50%",
                   borderWidth: "2px", // Increased border width for definition
-                  borderColor: "rgba(17, 216, 230, 1)", // Kept color opaque
+                  borderColor: "rgba(17, 216, 230, 0.8)", // Kept color opaque
                   width: "60px", // Use base size variable
                   height: "60px", // Use base size variable
                   transform: "translate(-50%, -50%)", // Center precisely
                 }}
-                initial={{ width: "10px", height: "10px", opacity: 1 }} // Start invisible (scale 0), slightly reduced initial opacity
-                animate={{ width: "80px", height: "80px", opacity: 0 }} // Expand and fade out
+                initial={{
+                  width: "10px",
+                  height: "10px",
+                  opacity: 1 - index * 0.4,
+                }}
+                animate={{ width: "100px", height: "100px", opacity: 0 }}
                 transition={{
                   delay: index * ringDelay, // Stagger the start time
                   duration: ringDuration,
