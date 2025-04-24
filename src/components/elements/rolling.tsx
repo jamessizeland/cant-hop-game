@@ -7,6 +7,7 @@ import { GameState, PlayerChoice, PlayerColors } from "types";
 type RollerProps = {
   setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;
   playerIndex: number;
+  hops: number;
 };
 
 const diceVariants = {
@@ -36,12 +37,11 @@ const choicesVariants = {
   }),
 };
 
-const DiceRoller = ({ setGameState, playerIndex }: RollerProps) => {
+const DiceRoller = ({ setGameState, playerIndex, hops }: RollerProps) => {
   const [dice, setDice] = useState<{
     dice: number[];
     choices: PlayerChoice[];
   }>({ dice: [], choices: [] });
-  const [hops, setHops] = useState<PlayerChoice[]>([]);
 
   const updateDice = async () => {
     // Clear previous roll if needed.
@@ -54,11 +54,6 @@ const DiceRoller = ({ setGameState, playerIndex }: RollerProps) => {
   };
 
   const makeChoice = async (choice: PlayerChoice) => {
-    setHops((hops) => {
-      const newHops = [...hops, choice];
-      console.log("new hops: ", newHops);
-      return newHops;
-    });
     const state = await chooseColumns(choice);
     setDice({ dice: [], choices: [] });
     if (state) {
@@ -72,12 +67,11 @@ const DiceRoller = ({ setGameState, playerIndex }: RollerProps) => {
   const endPlayerTurn = async (forced: boolean) => {
     const state = await endTurn(forced);
     setDice({ dice: [], choices: [] });
-    setHops([]);
     setGameState(state);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-6 p-2">
+    <div className="flex flex-col items-center justify-center space-y-4">
       {!dice.dice.length ? (
         <div className="flex flex-row items-center justify-center space-x-6">
           <motion.button
@@ -92,7 +86,7 @@ const DiceRoller = ({ setGameState, playerIndex }: RollerProps) => {
           >
             Hop
           </motion.button>
-          {hops.length > 0 ? (
+          {hops > 0 ? (
             <motion.button
               className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
               type="button"

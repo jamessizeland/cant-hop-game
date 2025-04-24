@@ -18,6 +18,13 @@ export async function startGame(settings: SettingsState): Promise<boolean> {
 }
 
 /**
+ * Stops the game and clears all saved data.
+ */
+export async function stopGame() {
+  await invoke("stop_game");
+}
+
+/**
  * Rolls the dice and returns the result.
  * @returns A promise that resolves to the result of the dice roll.
  */

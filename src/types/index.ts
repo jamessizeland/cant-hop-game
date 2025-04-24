@@ -50,13 +50,17 @@ export type SettingsState = {
 
 /** Game state information */
 export type GameState = {
+  /** Whether the game is in progress, used for resume behaviour */
+  in_progress: boolean;
   /** Settings submitted at the start of the game */
   settings: SettingsState;
   /** Index of current player */
   current_player: number;
+  /** Hops made in current run by current player */
+  hops: number;
   /** 11 columns, one for each possible number on 2D6 */
   columns: Columns;
-  /** Index of winning player */
+  /** Info of winning player */
   winner: Player | null;
 };
 

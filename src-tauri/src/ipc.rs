@@ -1,12 +1,15 @@
 use std::collections::HashSet;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use rand::random;
+use tauri::Manager;
+use tauri_plugin_store::StoreExt;
 
 use crate::{
     logic::evaluate_moves,
     state::{DiceResult, GameState, GameStateMutex, SettingsState},
     utils::generate_name,
+    STORE,
 };
 
 #[tauri::command]
@@ -18,23 +21,31 @@ pub fn start_game(
     let mut game_state = state.lock().unwrap();
     *game_state = Default::default();
     game_state.settings = settings;
+    game_state.in_progress = true;
     println!("Starting New Game");
     println!("{:?}", game_state);
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_game_state(state: tauri::State<GameStateMutex>) -> GameState {
+pub fn get_game_state(
+    state: tauri::State<GameStateMutex>,
+    app: tauri::AppHandle,
+) -> tauri::Result<GameState> {
     let game_state = state.lock().unwrap();
+    let store = app
+        .app_handle()
+        .store(STORE)
+        .context("failed to open store when saving game state.")?;
+    game_state.write_to_store(&store)?;
     println!("Getting game state: {:?}", game_state);
-    game_state.clone()
+    Ok(game_state.clone())
 }
 
 #[tauri::command]
-pub fn stop_game() -> tauri::Result<()> {
-    // Here you would stop your game logic
-    // For example, you could signal the game thread or process to stop
-    // This is just a placeholder for demonstration purposes
+pub fn stop_game(state: tauri::State<GameStateMutex>) -> tauri::Result<()> {
+    let mut game_state = state.lock().unwrap();
+    *game_state = Default::default();
     println!("Game stopped!");
     Ok(())
 }
@@ -81,6 +92,7 @@ pub fn choose_columns(
     first: usize,
     second: Option<usize>,
     state: tauri::State<GameStateMutex>,
+    app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
     println!("Choosing columns: {} {:?}", first, second);
     let mut game_state = state.lock().unwrap();
@@ -95,14 +107,29 @@ pub fn choose_columns(
         col2.risked += 1;
     };
     println!("Risked columns: {:?}", game_state);
+    game_state.hops += 1;
+    let store = app
+        .app_handle()
+        .store(STORE)
+        .context("failed to open store when saving game state.")?;
+    game_state.write_to_store(&store)?;
     Ok(game_state.clone())
 }
 
 #[tauri::command]
 /// Player has chosen to end their turn, or has been forced to end it by
 /// pushing their luck too far, and running out of options.
-pub fn end_turn(forced: bool, state: tauri::State<GameStateMutex>) -> GameState {
+pub fn end_turn(
+    forced: bool,
+    state: tauri::State<GameStateMutex>,
+    app: tauri::AppHandle,
+) -> tauri::Result<GameState> {
     let mut game_state = state.lock().unwrap();
     game_state.next_player(forced);
-    game_state.clone()
+    let store = app
+        .app_handle()
+        .store(STORE)
+        .context("failed to open store when saving game state.")?;
+    game_state.write_to_store(&store)?;
+    Ok(game_state.clone())
 }

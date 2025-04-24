@@ -1,7 +1,9 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{sync::Mutex, thread};
-use tauri::{async_runtime::Receiver, Emitter as _, Manager as _, WebviewWindow}; // mutual exclusion wrapper
+use tauri::{async_runtime::Receiver, Emitter as _, Manager as _, WebviewWindow};
+
+use crate::state::GameStateMutex; // mutual exclusion wrapper
 
 /// queue handler
 pub type QueueHandler = Mutex<tauri::async_runtime::Sender<Message>>;
@@ -23,6 +25,7 @@ impl Message {
 pub fn bot_service(
     app: &mut tauri::App,
     mut rx: Receiver<Message>,
+    game_state: GameStateMutex,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let window = app
         .get_webview_window("main")

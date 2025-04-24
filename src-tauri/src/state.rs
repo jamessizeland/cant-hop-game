@@ -1,6 +1,11 @@
-use std::{collections::HashSet, fmt::Debug};
+use std::{
+    collections::HashSet,
+    fmt::Debug,
+    sync::{Arc, Mutex},
+};
 
 use serde::{Deserialize, Serialize};
+use tauri_plugin_store::Store;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettingsState {
@@ -81,13 +86,16 @@ pub struct DiceResult {
     pub choices: HashSet<(usize, Option<usize>)>,
 }
 
-pub type GameStateMutex = std::sync::Mutex<GameState>;
+pub type GameStateMutex = Arc<Mutex<GameState>>;
 
 #[derive(Clone, Serialize, Deserialize)]
 /// Game state information
 pub struct GameState {
+    pub in_progress: bool,
     pub settings: SettingsState,
     pub current_player: usize,
+    /// Hops made in current run by current player
+    pub hops: usize,
     pub columns: [Column; 11],
     pub winner: Option<Player>,
 }
@@ -125,7 +133,10 @@ impl GameState {
             self.check_completed_columns();
             self.check_is_over();
         }
-        self.current_player = (self.current_player + 1) % self.settings.players.len();
+        if self.winner.is_none() {
+            self.hops = 0;
+            self.current_player = (self.current_player + 1) % self.settings.players.len();
+        }
     }
 
     /// Check if the game is over
@@ -152,11 +163,22 @@ impl GameState {
             }
         }
     }
+    /// Update game state from disk
+    pub fn read_from_store<R: tauri::Runtime>(&mut self, store: &Store<R>) {
+        *self = serde_json::from_value(store.get("state").unwrap_or_default()).unwrap_or_default();
+    }
+    /// Save game state to disk
+    pub fn write_to_store<R: tauri::Runtime>(&self, store: &Store<R>) -> anyhow::Result<()> {
+        let state = serde_json::to_value(self.clone())?;
+        store.set("state", state);
+        Ok(())
+    }
 }
 
 impl Default for GameState {
     fn default() -> Self {
         Self {
+            in_progress: false,
             settings: SettingsState {
                 players: vec![
                     Player {
@@ -175,6 +197,7 @@ impl Default for GameState {
                 win_cols: 3,
             },
             current_player: 0,
+            hops: 0,
             columns: generate_columns(),
             winner: None,
         }

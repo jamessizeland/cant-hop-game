@@ -47,6 +47,7 @@ export function GamePage() {
             <DiceRoller
               setGameState={setGameState}
               playerIndex={gameState.current_player}
+              hops={gameState.hops}
             />
           )}
         </>

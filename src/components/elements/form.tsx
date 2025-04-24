@@ -2,7 +2,7 @@
 import { useForm } from "@tanstack/react-form";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { GiFrogFoot, GiFrogPrince } from "react-icons/gi";
+import { GiFrogPrince } from "react-icons/gi";
 import { getName, startGame } from "services/ipc";
 import { PlayerColors, PlayerMode, SettingsState } from "types";
 
