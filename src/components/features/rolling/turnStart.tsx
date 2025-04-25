@@ -8,7 +8,10 @@ const TurnStartContainer: React.FC<{
   endPlayerTurn: (forced: boolean) => Promise<void>;
 }> = ({ mode, hops, updateDice, endPlayerTurn }) => {
   return (
-    <div className="flex flex-row items-center justify-center space-x-6">
+    <div
+      className="flex flex-row items-center justify-center space-x-6"
+      id="turn-start-container"
+    >
       <motion.button
         id="hop-button"
         className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
@@ -16,10 +19,14 @@ const TurnStartContainer: React.FC<{
         disabled={mode !== "Human"}
         onClick={async () => await updateDice()}
         // Animation options
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0 }}
-        transition={{ duration: 0.1 }}
+        animate={{ y: [0, -10, 0] }}
+        transition={{
+          duration: 0.3,
+          repeat: Infinity,
+          repeatType: "loop",
+          repeatDelay: 5,
+          delay: 8,
+        }}
       >
         Hop
       </motion.button>

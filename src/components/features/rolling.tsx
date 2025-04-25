@@ -10,6 +10,8 @@ import { DiceResult, GameState, PlayerChoice } from "types";
 import DiceContainer from "./rolling/dice";
 import ChoiceContainer from "./rolling/choice";
 import TurnStartContainer from "./rolling/turnStart";
+import { useTour } from "@reactour/tour";
+import { MdQuestionMark } from "react-icons/md";
 
 type RollerProps = {
   setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;
@@ -20,6 +22,13 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
   const playerIndex = gameState.current_player;
   const player = gameState.settings.players[playerIndex];
   const [dice, setDice] = useState<DiceResult>({ dice: [], choices: [] });
+  const {
+    currentStep,
+    setCurrentStep,
+    isOpen: isTourOpen,
+    setIsOpen,
+  } = useTour();
+  const [showTutorial, setShowTutorial] = useState(true);
 
   useEffect(() => {
     if (player.mode !== "Human") {
@@ -34,12 +43,16 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
   }, [gameState]);
 
   const updateDice = async () => {
+    setShowTutorial(false); // tutorial only valid at very start of the game.
     // Clear previous roll if needed.
     setDice({ dice: [], choices: [] });
     // Small delay before showing result (simulate rolling).
     setTimeout(async () => {
       const newDice = await rollDice();
       setDice(newDice);
+      if (isTourOpen) {
+        setCurrentStep(currentStep + 1);
+      }
     }, 100);
   };
 
@@ -49,6 +62,9 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
     if (state) {
       console.log("updating choices");
       setGameState(state);
+      if (isTourOpen && currentStep === 3) {
+        setCurrentStep(currentStep + 1);
+      }
     } else {
       notifyError("Something went wrong choosing columns", "choiceError");
     }
@@ -78,6 +94,15 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
         endPlayerTurn={endPlayerTurn}
         makeChoice={makeChoice}
       />
+      {showTutorial && player.mode === "Human" && (
+        <button
+          type="button"
+          className="fixed bottom-0 right-2 m-4 p-2 h-12 w-32 border rounded mx-2 btn btn-xl bg-green-300 text-black"
+          onClick={() => setIsOpen(true)}
+        >
+          Tutorial <MdQuestionMark />
+        </button>
+      )}
     </div>
   );
 };
