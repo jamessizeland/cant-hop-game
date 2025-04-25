@@ -1,3 +1,5 @@
+pub mod ai;
+
 use std::collections::HashSet;
 
 use anyhow::{anyhow, Context};
@@ -28,6 +30,7 @@ pub fn init_store(state: tauri::State<GameStateMutex>, app: tauri::AppHandle) ->
 pub fn start_game(
     settings: SettingsState,
     state: tauri::State<GameStateMutex>,
+    app: tauri::AppHandle,
 ) -> tauri::Result<()> {
     println!("Starting game with settings: {:?}", settings);
     let mut game_state = state.lock().unwrap();
@@ -36,6 +39,11 @@ pub fn start_game(
     game_state.in_progress = true;
     println!("Starting New Game");
     println!("{:?}", game_state);
+    let store = app
+        .app_handle()
+        .store(STORE)
+        .context("failed to open store when saving game state.")?;
+    game_state.write_to_store(&store)?;
     Ok(())
 }
 
@@ -44,7 +52,11 @@ pub fn get_game_state(
     state: tauri::State<GameStateMutex>,
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
-    let game_state = state.lock().unwrap();
+    let mut game_state = state.lock().unwrap();
+    println!("Game State: {:?}", game_state);
+    if !game_state.in_progress {
+        *game_state = Default::default();
+    }
     let store = app
         .app_handle()
         .store(STORE)
@@ -144,11 +156,4 @@ pub fn end_turn(
         .context("failed to open store when saving game state.")?;
     game_state.write_to_store(&store)?;
     Ok(game_state.clone())
-}
-
-#[tauri::command]
-/// Decide bot action, hop or stop
-pub fn ai_check_continue(state: tauri::State<GameStateMutex>) -> bool {
-    // todo add real logic here.
-    false
 }

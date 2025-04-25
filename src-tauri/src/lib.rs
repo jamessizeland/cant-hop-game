@@ -1,7 +1,7 @@
 mod ipc;
 mod logic;
-// mod service;
 mod state;
+mod stats;
 mod utils;
 
 pub const STORE: &str = "store.json";
@@ -21,7 +21,7 @@ pub fn run() {
             ipc::end_turn,
             ipc::get_game_state,
             ipc::get_name,
-            ipc::ai_check_continue,
+            ipc::ai::check_continue,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
