@@ -126,9 +126,7 @@ function PlayerForm({ first, second }: { first: string; second: string }) {
                         }
                       >
                         <option value="Human">Human</option>
-                        <option disabled value="Safe">
-                          AI: Safe
-                        </option>
+                        <option value="Safe">AI: Safe</option>
                         <option disabled value="Normal">
                           AI: Normal
                         </option>

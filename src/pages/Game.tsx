@@ -1,4 +1,4 @@
-import DiceRoller from "components/elements/rolling";
+import DiceRoller from "components/features/rolling";
 import Loader from "components/Layout/loader";
 import { useEffect, useState } from "react";
 import { getGameState } from "services/ipc";
@@ -9,7 +9,6 @@ import GameBoard from "./Game/board";
 
 export function GamePage() {
   const [gameState, setGameState] = useState<GameState>();
-  const [demo, setDemo] = useState(false);
   const [playerName, setPlayerName] = useState<string>("");
   const [gameOver, setGameOver] = useState(false);
 
@@ -22,7 +21,8 @@ export function GamePage() {
   useEffect(() => {
     console.log("Game State Updated", gameState);
     if (!gameState) return;
-    setPlayerName(gameState.settings.players[gameState.current_player]?.name);
+    const current_player = gameState.current_player;
+    setPlayerName(gameState.settings.players[current_player]?.name);
     if (gameState.winner !== null) {
       setGameOver(true);
     }
@@ -37,18 +37,13 @@ export function GamePage() {
           )}
           <TopBar
             playerName={playerName}
-            setDemo={setDemo}
             playerIndex={gameState.current_player}
           />
           <div className="w-screen flex items-center justify-center flex-col py-3 px-5 mt-7">
-            <GameBoard gameState={gameState} demo={demo} />
+            <GameBoard gameState={gameState} />
           </div>
           {gameState.winner === null && (
-            <DiceRoller
-              setGameState={setGameState}
-              playerIndex={gameState.current_player}
-              hops={gameState.hops}
-            />
+            <DiceRoller setGameState={setGameState} gameState={gameState} />
           )}
         </>
       ) : (

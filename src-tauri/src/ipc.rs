@@ -1,3 +1,5 @@
+pub mod ai;
+
 use std::collections::HashSet;
 
 use anyhow::{anyhow, Context};
@@ -13,9 +15,22 @@ use crate::{
 };
 
 #[tauri::command]
+/// Initialize the GameState data from disk.
+pub fn init_store(state: tauri::State<GameStateMutex>, app: tauri::AppHandle) -> tauri::Result<()> {
+    let mut game_state = state.lock().unwrap();
+    let store = app
+        .app_handle()
+        .store(STORE)
+        .context("failed to open store when saving game state.")?;
+    game_state.read_from_store(&store);
+    Ok(())
+}
+
+#[tauri::command]
 pub fn start_game(
     settings: SettingsState,
     state: tauri::State<GameStateMutex>,
+    app: tauri::AppHandle,
 ) -> tauri::Result<()> {
     println!("Starting game with settings: {:?}", settings);
     let mut game_state = state.lock().unwrap();
@@ -24,6 +39,11 @@ pub fn start_game(
     game_state.in_progress = true;
     println!("Starting New Game");
     println!("{:?}", game_state);
+    let store = app
+        .app_handle()
+        .store(STORE)
+        .context("failed to open store when saving game state.")?;
+    game_state.write_to_store(&store)?;
     Ok(())
 }
 
@@ -32,7 +52,11 @@ pub fn get_game_state(
     state: tauri::State<GameStateMutex>,
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
-    let game_state = state.lock().unwrap();
+    let mut game_state = state.lock().unwrap();
+    println!("Game State: {:?}", game_state);
+    if !game_state.in_progress {
+        *game_state = Default::default();
+    }
     let store = app
         .app_handle()
         .store(STORE)
