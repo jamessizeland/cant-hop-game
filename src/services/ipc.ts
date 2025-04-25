@@ -2,6 +2,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { DiceResult, GameState, PlayerChoice, SettingsState } from "types";
 import { notifyError } from "./notifications";
 
+export async function initStore(): Promise<void> {
+  try {
+    await invoke("init_store");
+  } catch (e) {
+    notifyError(`Failed to initialize game storage: ${e}`, "StoreError");
+  }
+}
+
 /**
  * Starts the game with the given settings.
  * @param settings - The settings to start the game with.
@@ -68,4 +76,9 @@ export async function getGameState(): Promise<GameState> {
  */
 export async function getName(seed?: number): Promise<string> {
   return await invoke<string>("get_name", { seed });
+}
+
+/** Check if the AI player should hop or stop. */
+export async function aiCheckContinue(): Promise<boolean> {
+  return await invoke<boolean>("ai_check_continue");
 }

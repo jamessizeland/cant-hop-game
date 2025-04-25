@@ -13,6 +13,18 @@ use crate::{
 };
 
 #[tauri::command]
+/// Initialize the GameState data from disk.
+pub fn init_store(state: tauri::State<GameStateMutex>, app: tauri::AppHandle) -> tauri::Result<()> {
+    let mut game_state = state.lock().unwrap();
+    let store = app
+        .app_handle()
+        .store(STORE)
+        .context("failed to open store when saving game state.")?;
+    game_state.read_from_store(&store);
+    Ok(())
+}
+
+#[tauri::command]
 pub fn start_game(
     settings: SettingsState,
     state: tauri::State<GameStateMutex>,
@@ -132,4 +144,11 @@ pub fn end_turn(
         .context("failed to open store when saving game state.")?;
     game_state.write_to_store(&store)?;
     Ok(game_state.clone())
+}
+
+#[tauri::command]
+/// Decide bot action, hop or stop
+pub fn ai_check_continue(state: tauri::State<GameStateMutex>) -> bool {
+    // todo add real logic here.
+    false
 }
