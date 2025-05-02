@@ -70,6 +70,11 @@ export async function getGameState(): Promise<GameState> {
   return await invoke<GameState>("get_game_state");
 }
 
+/** Return the end of game statistics. */
+export async function getGameStatistics() {
+  return await invoke("get_game_statistics");
+}
+
 /** Generate a random name, can be seeded for reproducibility.
  * @param seed - Optional seed for random name generation.
  * @returns A promise that resolves to the generated name.

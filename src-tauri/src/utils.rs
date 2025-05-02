@@ -1,4 +1,9 @@
+use std::sync::Arc;
+
+use anyhow::Context as _;
 use rand::{rngs::StdRng, seq::IndexedRandom as _, SeedableRng};
+use tauri::Wry;
+use tauri_plugin_store::{Store, StoreExt as _};
 
 /// Combine the two lists to generate a random name.
 pub fn generate_name(seed: Option<u64>) -> String {
@@ -31,4 +36,11 @@ pub fn generate_name(seed: Option<u64>) -> String {
 
     let name = format!("{} {}", part1, part2);
     name
+}
+
+pub fn get_store(app: &tauri::AppHandle) -> anyhow::Result<Arc<Store<Wry>>> {
+    const STORE: &str = "store.json";
+    Ok(app
+        .store(STORE)
+        .context("failed to open store when saving game state.")?)
 }

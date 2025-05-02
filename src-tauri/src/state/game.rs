@@ -1,24 +1,25 @@
-use std::{fmt::Debug, sync::Mutex};
+use std::{collections::HashSet, fmt::Debug, sync::Mutex};
 
 use serde::{Deserialize, Serialize};
 use tauri_plugin_store::Store;
 
 use super::{
     columns::{generate_columns, Column},
-    player::{Player, PlayerMode},
+    player::{Player, PlayerMode, RunOutcome},
     SettingsState,
 };
 
 pub type GameStateMutex = Mutex<GameState>;
 
 #[derive(Clone, Serialize, Deserialize)]
-/// Game state information
+/// Game state information used to update the Frontend.
 pub struct GameState {
     pub in_progress: bool,
     pub settings: SettingsState,
     pub current_player: usize,
     /// Hops made in current run by current player
     pub hops: usize,
+    /// Columns selected in the current hop sequence (indices into `columns`)
     pub columns: [Column; 11],
     pub winner: Option<Player>,
 }
@@ -45,37 +46,74 @@ impl Debug for GameState {
 }
 
 impl GameState {
+    /// Reset the gamestate. But keep the settings to allow rematches.
+    pub fn clear(&mut self) {
+        *self = Self {
+            in_progress: false,
+            settings: self.settings.to_owned(),
+            current_player: 0,
+            hops: 0,
+            columns: generate_columns(),
+            winner: None,
+        }
+    }
     /// Lock in any risked moves for the current player and
     /// set to next player, unless they were forced to end their turn.
     /// in which case, we don't lock in the risked moves.
-    pub fn next_player(&mut self, forced: bool) {
+    pub fn next_player(&mut self, outcome: RunOutcome) {
         let player = self.current_player;
+
         for column in self.columns.as_mut() {
-            if !forced {
-                // player banked their risked moves, so we add them to each column.
-                column.hops[player] = (column.hops[player] + column.risked).clamp(0, column.height);
+            if outcome == RunOutcome::Banked {
+                // Add banked hops to each column. Clamp to bounds of the column.
+                let new_position = (column.hops[player] + column.risked).clamp(0, column.height);
+                column.hops[player] = new_position;
             }
             column.risked = 0;
         }
-        if !forced {
+        if outcome == RunOutcome::Banked {
+            // check for win conditions
             self.check_completed_columns();
-            self.check_is_over();
+            if self.is_over() {
+                return; // someone has won!
+            }
         }
-        if self.winner.is_none() {
-            self.hops = 0;
-            self.current_player = (self.current_player + 1) % self.settings.players.len();
-        }
+        self.hops = 0;
+        self.current_player = (self.current_player + 1) % self.settings.players.len();
+    }
+
+    /// Return a list of the selected columns this run.
+    pub fn get_selected(&self) -> HashSet<usize> {
+        self.columns
+            .iter()
+            .filter(|col| col.risked != 0)
+            .map(|col| col.col)
+            .collect()
+    }
+
+    /// Return a list of the columns that have been won and are therefore
+    /// no longer accessible.
+    pub fn get_unavailable(&self) -> HashSet<usize> {
+        self.columns
+            .iter()
+            .filter(|col| col.locked.is_some())
+            .map(|col| col.col)
+            .collect()
     }
 
     /// Check if the game is over
-    pub fn check_is_over(&mut self) {
+    pub fn is_over(&mut self) -> bool {
         for player in &self.settings.players {
             if player.won_cols.len() >= self.settings.win_cols {
                 self.winner = Some(player.clone());
             }
         }
-        if let Some(winner) = self.winner.as_ref() {
-            println!("Game Over! Player {} wins!", winner.name);
+        match self.winner.as_ref() {
+            Some(winner) => {
+                println!("Game Over! Player {} wins!", winner.name);
+                true
+            }
+            None => false,
         }
     }
     /// Check if a player is sat at the top of an unlocked column.
@@ -91,13 +129,14 @@ impl GameState {
             }
         }
     }
+
     /// Update game state from disk
-    pub fn read_from_store<R: tauri::Runtime>(&mut self, store: &Store<R>) {
+    pub fn update_from_store<R: tauri::Runtime>(&mut self, store: &Store<R>) {
         if let Some(state) = store.get("state") {
             *self = serde_json::from_value(state).unwrap_or_default();
         } else {
             println!("'state' missing from store");
-            *self = GameState::default();
+            *self = Self::default();
         }
     }
     /// Save game state to disk
@@ -105,6 +144,13 @@ impl GameState {
         let state = serde_json::to_value(self.clone())?;
         store.set("state", state);
         Ok(())
+    }
+
+    /// Set up a new game state
+    pub fn new_game(&mut self, settings: SettingsState) {
+        *self = Self::default();
+        self.settings = settings;
+        self.in_progress = true;
     }
 }
 
