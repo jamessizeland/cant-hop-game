@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { DiceResult, GameState, PlayerChoice, SettingsState } from "types";
+import {
+  DiceResult,
+  GameState,
+  PlayerChoice,
+  SettingsState,
+  StatsSummary,
+} from "types";
 import { notifyError } from "./notifications";
 
 export async function initStore(): Promise<void> {
@@ -29,15 +35,23 @@ export async function startGame(settings: SettingsState): Promise<boolean> {
  * Stops the game and clears all saved data.
  */
 export async function stopGame() {
-  await invoke("stop_game");
+  try {
+    await invoke("stop_game");
+  } catch (e) {
+    notifyError(`Failed to stop game: ${e}`, "StopError");
+  }
 }
 
 /**
  * Rolls the dice and returns the result.
  * @returns A promise that resolves to the result of the dice roll.
  */
-export async function rollDice(): Promise<DiceResult> {
-  return await invoke<DiceResult>("roll_dice");
+export async function rollDice(): Promise<DiceResult | undefined> {
+  try {
+    return await invoke<DiceResult>("roll_dice");
+  } catch (e) {
+    notifyError(`Failed to roll dice: ${e}`, "RollDiceError");
+  }
 }
 
 /**
@@ -61,13 +75,18 @@ export async function chooseColumns(
 }
 
 /** Player has chosen to end their turn. */
-export async function endTurn(forced: boolean): Promise<GameState> {
-  return await invoke<GameState>("end_turn", { forced });
+export async function endRun(forced: boolean): Promise<GameState> {
+  return await invoke<GameState>("end_run", { forced });
 }
 
 /** Return the current game state. */
 export async function getGameState(): Promise<GameState> {
   return await invoke<GameState>("get_game_state");
+}
+
+/** Return the end of game statistics. */
+export async function getGameStatistics(): Promise<StatsSummary> {
+  return await invoke<StatsSummary>("get_game_statistics");
 }
 
 /** Generate a random name, can be seeded for reproducibility.

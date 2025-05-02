@@ -5,8 +5,8 @@ const TurnStartContainer: React.FC<{
   mode: PlayerMode;
   hops: number;
   updateDice: () => Promise<void>;
-  endPlayerTurn: (forced: boolean) => Promise<void>;
-}> = ({ mode, hops, updateDice, endPlayerTurn }) => {
+  endPlayerRun: (forced: boolean) => Promise<void>;
+}> = ({ mode, hops, updateDice, endPlayerRun }) => {
   return (
     <div
       className="flex flex-row items-center justify-center space-x-6"
@@ -35,7 +35,7 @@ const TurnStartContainer: React.FC<{
           id="stop-button"
           className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
           type="button"
-          onClick={async () => await endPlayerTurn(false)}
+          onClick={async () => await endPlayerRun(false)}
           disabled={mode !== "Human"}
           // Animation options
           initial={{ scale: 0 }}

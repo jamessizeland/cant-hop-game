@@ -75,3 +75,22 @@ export const PlayerColors = ["#ffffff", "#f87171", "#99f2e6", "#a78bfa"];
 
 /** Player can choose up to two columns per turn. */
 export type PlayerChoice = [number, number | undefined];
+
+export type PlayerStats = {
+  /** Longest successful run */
+  longest_run: number;
+  /** Total turns unsuccessfully ended */
+  croaked: number;
+  /** Total turns successfully ended */
+  banked: number;
+  /** Calculated success rate compared to likelihood */
+  luck: number;
+};
+
+export type StatsSummary = {
+  /** Stats of individual players */
+  player_stats: PlayerStats[];
+  /** Column that had the most total hops, normalized for column height */
+  most_contested_column: number;
+  total_turns: number;
+};

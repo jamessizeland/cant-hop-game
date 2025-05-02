@@ -1,10 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  aiCheckContinue,
-  chooseColumns,
-  endTurn,
-  rollDice,
-} from "services/ipc";
+import { aiCheckContinue, chooseColumns, endRun, rollDice } from "services/ipc";
 import { notifyError } from "services/notifications";
 import { DiceResult, GameState, PlayerChoice } from "types";
 import DiceContainer from "./rolling/dice";
@@ -35,7 +30,7 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
       setTimeout(async () => {
         aiCheckContinue().then((isContinue) => {
           if (!isContinue) {
-            endPlayerTurn(false);
+            endPlayerRun(false);
           }
         });
       }, 500);
@@ -49,7 +44,9 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
     // Small delay before showing result (simulate rolling).
     setTimeout(async () => {
       const newDice = await rollDice();
-      setDice(newDice);
+      if (newDice !== undefined) {
+        setDice(newDice);
+      }
       if (isTourOpen) {
         setCurrentStep(currentStep + 1);
       }
@@ -70,8 +67,8 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
     }
   };
 
-  const endPlayerTurn = async (forced: boolean) => {
-    const state = await endTurn(forced);
+  const endPlayerRun = async (forced: boolean) => {
+    const state = await endRun(forced);
     setDice({ dice: [], choices: [] });
     setGameState(state);
   };
@@ -83,7 +80,7 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
           mode={player.mode}
           hops={gameState.hops}
           updateDice={updateDice}
-          endPlayerTurn={endPlayerTurn}
+          endPlayerRun={endPlayerRun}
         />
       )}
       <DiceContainer playerIndex={playerIndex} dice={dice.dice} />
@@ -91,7 +88,7 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
         dice={dice}
         playerIndex={playerIndex}
         mode={player.mode}
-        endPlayerTurn={endPlayerTurn}
+        endPlayerTurn={endPlayerRun}
         makeChoice={makeChoice}
       />
       {showTutorial && player.mode === "Human" && (

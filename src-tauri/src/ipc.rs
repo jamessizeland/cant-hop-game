@@ -1,75 +1,81 @@
-pub mod ai;
+// pub mod ai;
 
-use std::collections::HashSet;
-
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use rand::random;
-use tauri::Manager;
-use tauri_plugin_store::StoreExt;
 
 use crate::{
-    logic::evaluate_moves,
-    state::{DiceResult, GameState, GameStateMutex, SettingsState},
-    utils::generate_name,
-    STORE,
+    state::{
+        evaluate_moves, AppContext, ColumnID, DiceResult, GameState, SettingsState, StatsSummary,
+    },
+    utils::{generate_name, get_store},
 };
 
 #[tauri::command]
-/// Initialize the GameState data from disk.
-pub fn init_store(state: tauri::State<GameStateMutex>, app: tauri::AppHandle) -> tauri::Result<()> {
-    let mut game_state = state.lock().unwrap();
-    let store = app
-        .app_handle()
-        .store(STORE)
-        .context("failed to open store when saving game state.")?;
-    game_state.read_from_store(&store);
+/// Initialize the GameState and Game History data from disk.
+pub fn init_store(state: tauri::State<AppContext>, app: tauri::AppHandle) -> tauri::Result<()> {
+    let mut game_state = state.game.lock().unwrap();
+    let mut history = state.hist.lock().unwrap();
+    let store = get_store(&app)?;
+    game_state.update_from_store(&store);
+    history.update_from_store(&store);
     Ok(())
 }
 
 #[tauri::command]
+/// On Settings page, when starting a new game.
 pub fn start_game(
     settings: SettingsState,
-    state: tauri::State<GameStateMutex>,
+    state: tauri::State<AppContext>,
     app: tauri::AppHandle,
 ) -> tauri::Result<()> {
     println!("Starting game with settings: {:?}", settings);
-    let mut game_state = state.lock().unwrap();
-    *game_state = Default::default();
-    game_state.settings = settings;
-    game_state.in_progress = true;
-    println!("Starting New Game");
-    println!("{:?}", game_state);
-    let store = app
-        .app_handle()
-        .store(STORE)
-        .context("failed to open store when saving game state.")?;
+    let mut game_state = state.game.lock().unwrap();
+    let mut game_history = state.hist.lock().unwrap();
+    game_history.new_game(settings.players.len())?;
+    game_state.new_game(settings);
+
+    let store = get_store(&app)?;
     game_state.write_to_store(&store)?;
+    game_history.write_to_store(&store)?;
     Ok(())
 }
 
 #[tauri::command]
+/// Return the current game state.
 pub fn get_game_state(
-    state: tauri::State<GameStateMutex>,
+    state: tauri::State<AppContext>,
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
-    let mut game_state = state.lock().unwrap();
+    let mut game_state = state.game.lock().unwrap();
     println!("Game State: {:?}", game_state);
     if !game_state.in_progress {
-        *game_state = Default::default();
+        game_state.clear();
     }
-    let store = app
-        .app_handle()
-        .store(STORE)
-        .context("failed to open store when saving game state.")?;
+    let store = get_store(&app)?;
     game_state.write_to_store(&store)?;
     println!("Getting game state: {:?}", game_state);
     Ok(game_state.clone())
 }
 
 #[tauri::command]
-pub fn stop_game(state: tauri::State<GameStateMutex>) -> tauri::Result<()> {
-    let mut game_state = state.lock().unwrap();
-    *game_state = Default::default();
+/// Return the end of game statistics summary.
+pub fn get_game_statistics(state: tauri::State<AppContext>) -> StatsSummary {
+    let history = state.hist.lock().unwrap();
+    history.calculate_summary()
+}
+
+#[tauri::command]
+/// Game over, reset the gamestate ready for a new game.
+pub fn stop_game(state: tauri::State<AppContext>, app: tauri::AppHandle) -> tauri::Result<()> {
+    let mut game_state = state.game.lock().unwrap();
+    let mut history = state.hist.lock().unwrap();
+    game_state.clear();
+    history.clear();
+    {
+        let store = get_store(&app)?;
+        game_state.write_to_store(&store)?;
+        history.write_to_store(&store)?;
+    }
     println!("Game stopped!");
     Ok(())
 }
@@ -84,42 +90,39 @@ pub fn get_name(seed: Option<u64>) -> String {
 /// Rolls 4 dice and returns their values
 /// The values are random numbers between 1 and 6 (inclusive)
 /// Evaluate the possible combinations of the dice
-pub fn roll_dice(state: tauri::State<GameStateMutex>) -> DiceResult {
+pub fn roll_dice(
+    state: tauri::State<AppContext>,
+    app: tauri::AppHandle,
+) -> tauri::Result<DiceResult> {
     const DICE_SIDES: u8 = 6;
     const DICE_COUNT: usize = 4;
     let dice = [0; DICE_COUNT].map(|_| (random::<u8>() % DICE_SIDES + 1) as usize);
-    println!("Rolled dice: {:?}", dice);
-    let game_state = state.lock().unwrap();
+    let game_state = state.game.lock().unwrap();
 
-    // I want to know what columns I have currently risked
-    let selected: HashSet<usize> = game_state
-        .columns
-        .iter()
-        .filter(|col| col.risked != 0)
-        .map(|col| col.col)
-        .collect();
-    let unavailable: HashSet<usize> = game_state
-        .columns
-        .iter()
-        .filter(|col| col.locked.is_some())
-        .map(|col| col.col)
-        .collect();
-    println!("Selected columns: {:?}", selected);
+    let selected = game_state.get_selected();
+    let unavailable = game_state.get_unavailable();
+
     let choices = evaluate_moves(dice, &selected, &unavailable);
-    println!("Available moves: {:?}", choices);
-    DiceResult { dice, choices }
+    let result = DiceResult { dice, choices };
+    {
+        // update game history record
+        let mut history = state.hist.lock().unwrap();
+        history.player_mut().record_roll(&result, &selected);
+        let store = get_store(&app)?;
+        history.write_to_store(&store)?;
+    }
+    Ok(result)
 }
 
 #[tauri::command]
 /// Choose columns to risk
 pub fn choose_columns(
-    first: usize,
-    second: Option<usize>,
-    state: tauri::State<GameStateMutex>,
+    first: ColumnID,
+    second: Option<ColumnID>,
+    state: tauri::State<AppContext>,
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
-    println!("Choosing columns: {} {:?}", first, second);
-    let mut game_state = state.lock().unwrap();
+    let mut game_state = state.game.lock().unwrap();
     let Some(col1) = game_state.columns.get_mut(first) else {
         return Err(anyhow!("Invalid column index {}", first).into());
     };
@@ -130,30 +133,38 @@ pub fn choose_columns(
         };
         col2.risked += 1;
     };
-    println!("Risked columns: {:?}", game_state);
+    // println!("Risked columns: {:?}", game_state);
     game_state.hops += 1;
-    let store = app
-        .app_handle()
-        .store(STORE)
-        .context("failed to open store when saving game state.")?;
-    game_state.write_to_store(&store)?;
+    {
+        // record outcome
+        let store = get_store(&app)?;
+        game_state.write_to_store(&store)?;
+        let mut history = state.hist.lock().unwrap();
+        history.player_mut().record_choice(first, second);
+        history.write_to_store(&store)?;
+    }
     Ok(game_state.clone())
 }
 
 #[tauri::command]
-/// Player has chosen to end their turn, or has been forced to end it by
+/// Player has chosen to end their run, or has been forced to end it by
 /// pushing their luck too far, and running out of options.
-pub fn end_turn(
+pub fn end_run(
     forced: bool,
-    state: tauri::State<GameStateMutex>,
+    state: tauri::State<AppContext>,
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
-    let mut game_state = state.lock().unwrap();
-    game_state.next_player(forced);
-    let store = app
-        .app_handle()
-        .store(STORE)
-        .context("failed to open store when saving game state.")?;
+    let mut game_state = state.game.lock().unwrap();
+    let mut history = state.hist.lock().unwrap();
+    let store = get_store(&app)?;
+    let outcome = forced.into();
+
+    game_state.next_player(outcome);
+    history.next_player(outcome, game_state.get_unavailable());
+    println!("{}", history);
+    println!("{:?}", game_state);
+
     game_state.write_to_store(&store)?;
+    history.write_to_store(&store)?;
     Ok(game_state.clone())
 }
