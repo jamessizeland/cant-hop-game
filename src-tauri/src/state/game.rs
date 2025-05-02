@@ -81,7 +81,6 @@ impl GameState {
         self.hops = 0;
         self.current_player = (self.current_player + 1) % self.settings.players.len();
     }
-
     /// Return a list of the selected columns this run.
     pub fn get_selected(&self) -> HashSet<usize> {
         self.columns
@@ -90,7 +89,6 @@ impl GameState {
             .map(|col| col.col)
             .collect()
     }
-
     /// Return a list of the columns that have been won and are therefore
     /// no longer accessible.
     pub fn get_unavailable(&self) -> HashSet<usize> {
@@ -100,7 +98,6 @@ impl GameState {
             .map(|col| col.col)
             .collect()
     }
-
     /// Check if the game is over
     pub fn is_over(&mut self) -> bool {
         for player in &self.settings.players {
@@ -129,7 +126,6 @@ impl GameState {
             }
         }
     }
-
     /// Update game state from disk
     pub fn update_from_store<R: tauri::Runtime>(&mut self, store: &Store<R>) {
         if let Some(state) = store.get("state") {
@@ -145,7 +141,6 @@ impl GameState {
         store.set("state", state);
         Ok(())
     }
-
     /// Set up a new game state
     pub fn new_game(&mut self, settings: SettingsState) {
         *self = Self::default();

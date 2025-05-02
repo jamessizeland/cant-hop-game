@@ -12,6 +12,10 @@ use serde::{Deserialize, Serialize};
 pub use stats::{HistoryMutex, StatsSummary};
 use std::{collections::HashSet, fmt::Debug};
 
+pub type Choice = (ColumnID, Option<ColumnID>);
+pub type PlayerID = usize;
+pub type ColumnID = usize;
+
 #[derive(Default)]
 pub struct AppContext {
     pub game: GameStateMutex,
@@ -29,5 +33,5 @@ pub struct SettingsState {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct DiceResult {
     pub dice: [usize; 4],
-    pub choices: HashSet<(usize, Option<usize>)>,
+    pub choices: HashSet<Choice>,
 }

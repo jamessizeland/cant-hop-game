@@ -1,5 +1,10 @@
 use std::collections::HashSet;
 
+use super::{Choice, ColumnID};
+
+// Total number of possible outcomes when rolling 4 six-sided dice.
+const TOTAL_ROLLS: f32 = 6. * 6. * 6. * 6.; // 1296
+
 /// Evaluate the available moves from the four dice.
 /// - They must be paired up and cannot be reused.
 /// - `selected` is the set of columns already picked this round (0–3 of them).
@@ -11,9 +16,9 @@ use std::collections::HashSet;
 ///   provided it isn’t unavailable.
 pub fn evaluate_moves(
     dice: [usize; 4],
-    selected: &HashSet<usize>,
-    unavailable: &HashSet<usize>,
-) -> HashSet<(usize, Option<usize>)> {
+    selected: &HashSet<ColumnID>,
+    unavailable: &HashSet<ColumnID>,
+) -> HashSet<Choice> {
     let mut moves = HashSet::new();
     // how many new columns we can still add:
     let cap = 3usize.saturating_sub(selected.len());
@@ -65,6 +70,40 @@ pub fn evaluate_moves(
     moves
 }
 
+/// Calculate from game state what the likelihood is of going bust on the next roll.
+pub fn calculate_croak_chance(
+    active_cols: &HashSet<ColumnID>,
+    inactive_cols: &HashSet<ColumnID>,
+) -> f32 {
+    // If no columns are active, you cannot bust based on column availability.
+    // Your evaluate_moves should ideally handle this, but an explicit check is safer.
+    if active_cols.is_empty() {
+        return 0.0;
+    }
+
+    let mut bust_rolls = 0;
+
+    // Iterate through all possible outcomes of rolling 4 dice (d1, d2, d3, d4)
+    for d1 in 1..=6 {
+        for d2 in 1..=6 {
+            for d3 in 1..=6 {
+                for d4 in 1..=6 {
+                    let dice = [d1, d2, d3, d4];
+
+                    // Call your evaluate_moves function. It determines if *any* valid move exists.
+                    // We assume it returns an empty collection if and only if the roll results in a bust.
+                    if evaluate_moves(dice, active_cols, inactive_cols).is_empty() {
+                        bust_rolls += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // The probability is the number of bust outcomes divided by the total possible outcomes.
+    bust_rolls as f32 / TOTAL_ROLLS
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -76,11 +115,10 @@ mod test {
         let unavailable = HashSet::new();
         let moves = evaluate_moves(dice, &selected, &unavailable);
 
-        let expected_moves: HashSet<(usize, Option<usize>)> =
-            [(4, Some(6)), (5, Some(5)), (3, Some(7))]
-                .iter()
-                .cloned()
-                .collect();
+        let expected_moves: HashSet<Choice> = [(4, Some(6)), (5, Some(5)), (3, Some(7))]
+            .iter()
+            .cloned()
+            .collect();
 
         assert_eq!(moves, expected_moves);
     }
@@ -93,11 +131,10 @@ mod test {
         let unavailable = HashSet::new();
         let moves = evaluate_moves(dice, &selected, &unavailable);
 
-        let expected_moves: HashSet<(usize, Option<usize>)> =
-            [(4, Some(6)), (5, Some(5)), (3, Some(7))]
-                .iter()
-                .cloned()
-                .collect();
+        let expected_moves: HashSet<Choice> = [(4, Some(6)), (5, Some(5)), (3, Some(7))]
+            .iter()
+            .cloned()
+            .collect();
 
         assert_eq!(moves, expected_moves);
     }
@@ -112,8 +149,7 @@ mod test {
         let unavailable = HashSet::new();
         let moves = evaluate_moves(dice, &selected, &unavailable);
 
-        let expected_moves: HashSet<(usize, Option<usize>)> =
-            [(6, None), (3, Some(7))].iter().cloned().collect();
+        let expected_moves: HashSet<Choice> = [(6, None), (3, Some(7))].iter().cloned().collect();
 
         assert_eq!(moves, expected_moves);
     }
@@ -127,11 +163,10 @@ mod test {
         let unavailable = HashSet::new();
         let moves = evaluate_moves(dice, &selected, &unavailable);
 
-        let expected_moves: HashSet<(usize, Option<usize>)> =
-            [(6, Some(8)), (7, Some(7)), (5, None), (9, None)]
-                .iter()
-                .cloned()
-                .collect();
+        let expected_moves: HashSet<Choice> = [(6, Some(8)), (7, Some(7)), (5, None), (9, None)]
+            .iter()
+            .cloned()
+            .collect();
         assert_eq!(moves, expected_moves);
     }
 
@@ -143,12 +178,31 @@ mod test {
         unavailable.insert(3); // Column 3 is unavailable
         let moves = evaluate_moves(dice, &selected, &unavailable);
 
-        let expected_moves: HashSet<(usize, Option<usize>)> =
-            [(4, Some(6)), (5, Some(5)), (7, None)]
-                .iter()
-                .cloned()
-                .collect();
+        let expected_moves: HashSet<Choice> = [(4, Some(6)), (5, Some(5)), (7, None)]
+            .iter()
+            .cloned()
+            .collect();
 
         assert_eq!(moves, expected_moves);
+    }
+    // Helper macro for comparing floats with a tolerance
+    macro_rules! assert_approx_eq {
+        ($a:expr, $b:expr) => {
+            let diff = ($a - $b).abs();
+            if diff > 1e-4 {
+                // Use a small tolerance for float comparison
+                panic!(
+                    "Assertion failed: {:?} != {:?} (difference: {:?})",
+                    $a, $b, diff
+                );
+            }
+        };
+    }
+
+    #[test]
+    fn test_no_active_cols() {
+        let active = HashSet::new();
+        let inactive = HashSet::new();
+        assert_approx_eq!(calculate_croak_chance(&active, &inactive), 0.0);
     }
 }

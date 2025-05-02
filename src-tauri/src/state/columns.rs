@@ -1,10 +1,13 @@
+use super::{ColumnID, PlayerID};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+
+pub const HEIGHTS: [usize; 11] = [3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3];
 
 #[derive(Default, Copy, Clone, Serialize, Deserialize)]
 pub struct Column {
     /// The dice number of the column
-    pub col: usize,
+    pub col: ColumnID,
     /// The height of the column, which is the number of hops in the column
     pub height: usize,
     /// The current position of each player in the column
@@ -13,7 +16,7 @@ pub struct Column {
     /// This is relative to their current position in the column.
     pub risked: usize,
     /// Whether the column has been won by a player
-    pub locked: Option<usize>,
+    pub locked: Option<PlayerID>,
 }
 
 impl Debug for Column {
@@ -31,7 +34,6 @@ impl Debug for Column {
 }
 
 pub const fn generate_columns() -> [Column; 11] {
-    const HEIGHTS: [usize; 11] = [3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3];
     [
         Column {
             col: 2,

@@ -1,11 +1,17 @@
+use crate::state::{columns::HEIGHTS, logic::calculate_croak_chance};
+
 use super::{
-    player::{PlayerRun, RunOutcome},
-    DiceResult,
+    player::{PlayerRun, PlayerStats, RunOutcome},
+    ColumnID, DiceResult, PlayerID,
 };
 use anyhow::anyhow;
 use core::panic;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, fmt::Display, sync::Mutex};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    sync::Mutex,
+};
 use tauri_plugin_store::Store;
 
 pub type HistoryMutex = Mutex<History>;
@@ -16,7 +22,7 @@ pub struct PlayerHistory(Vec<PlayerRun>);
 
 impl PlayerHistory {
     /// Register the start of a new turn for this player.
-    pub fn record_start_run(&mut self, inactive_cols: HashSet<usize>) {
+    pub fn record_start_run(&mut self, inactive_cols: HashSet<ColumnID>) {
         self.0.push(PlayerRun::start(inactive_cols));
     }
     /// Get a reference to the current players' active run.
@@ -28,16 +34,18 @@ impl PlayerHistory {
     }
     /// Record the dice roll and options for the active player's latest turn.
     /// This includes starting a new turn as this is the first thing a player does each turn.
-    pub fn record_roll(&mut self, dice: &DiceResult) {
-        self.run_mut().start_turn(dice.to_owned());
+    pub fn record_roll(&mut self, dice: &DiceResult, active_cols: &HashSet<ColumnID>) {
+        let run = self.run_mut();
+        run.start_turn(dice.to_owned(), active_cols.to_owned());
     }
     /// Record the choice from the dice roll and options for the active player's latest turn.
-    pub fn record_choice(&mut self, first: usize, second: Option<usize>) {
+    pub fn record_choice(&mut self, first: ColumnID, second: Option<ColumnID>) {
         self.run_mut().turn_mut().chosen = Some((first, second));
     }
     /// Record the outcome of this run when it ends for any reason.
     fn record_end_run(&mut self, outcome: RunOutcome) {
         self.run_mut().outcome = outcome;
+        self.run_mut().turn_mut().outcome = outcome;
     }
 }
 
@@ -47,7 +55,7 @@ pub struct History {
     /// Vector of players participating in this game
     pub players: Vec<PlayerHistory>,
     /// index of current player
-    pub current_player: usize,
+    pub current_player: PlayerID,
 }
 
 impl History {
@@ -79,7 +87,7 @@ impl History {
     }
 
     /// Record the turn outcome and update the current player
-    pub fn next_player(&mut self, outcome: RunOutcome, inactive_cols: HashSet<usize>) {
+    pub fn next_player(&mut self, outcome: RunOutcome, inactive_cols: HashSet<ColumnID>) {
         self.player_mut().record_end_run(outcome);
         self.current_player = (self.current_player + 1) % self.players.len();
         self.player_mut().record_start_run(inactive_cols);
@@ -103,8 +111,75 @@ impl History {
 
     /// Calculates and returns the end-of-game statistics summary.
     pub fn calculate_summary(&self) -> StatsSummary {
-        dbg!(self);
-        StatsSummary { longest_run: 123 }
+        println!("Calculating summary...");
+        let mut col_activity: HashMap<ColumnID, usize> = HashMap::new(); // most active column
+        let mut total_turns = 0;
+        let player_stats: Vec<PlayerStats> = self
+            .players
+            .iter()
+            .map(|player: &PlayerHistory| {
+                let mut longest_run = 0;
+                let mut croaked = 0;
+                let mut banked = 0;
+                let mut luck = 0.0;
+                player.0.iter().for_each(|run| {
+                    let run_luck: f32 = run
+                        .turns
+                        .iter()
+                        .map(|turn| {
+                            total_turns += 1;
+                            match turn.chosen {
+                                Some((first, Some(second))) => {
+                                    *col_activity.entry(first).or_insert(0) += 1;
+                                    *col_activity.entry(second).or_insert(0) += 1;
+                                }
+                                Some((first, None)) => {
+                                    *col_activity.entry(first).or_insert(0) += 1;
+                                }
+                                None => (),
+                            }
+                            let p_croak =
+                                calculate_croak_chance(&turn.active_cols, &run.inactive_cols);
+                            p_croak
+                                - if turn.outcome == RunOutcome::Croaked {
+                                    1.0 // negative luck if croaked
+                                } else {
+                                    0.0 // positive luck if not bust
+                                }
+                        })
+                        .sum();
+                    luck += run_luck;
+                    match run.outcome {
+                        RunOutcome::InProgress => (),
+                        RunOutcome::Croaked => croaked += 1,
+                        RunOutcome::Banked => {
+                            banked += 1;
+                            longest_run = longest_run.max(run.turns.len());
+                        }
+                    }
+                });
+                PlayerStats {
+                    longest_run,
+                    croaked,
+                    banked,
+                    luck: luck / total_turns as f32,
+                }
+            })
+            .collect();
+        println!("col activity: {:?}", col_activity);
+        let mut most_contested_columm: (ColumnID, f32) = (0, 0.0);
+        col_activity.iter().for_each(|(col, count)| {
+            let normalized_count = *count as f32 / HEIGHTS[*col] as f32;
+            if normalized_count > most_contested_columm.1 {
+                most_contested_columm = (*col, normalized_count);
+            }
+        });
+        println!("most contested column: {:?}", most_contested_columm);
+        StatsSummary {
+            player_stats,
+            most_contested_column: most_contested_columm.0,
+            total_turns,
+        }
     }
 }
 
@@ -131,12 +206,14 @@ impl Display for History {
     }
 }
 
+/// End game statistics for a specific player
+
 /// Holds the calculated statistics for a completed game.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatsSummary {
-    pub longest_run: usize,
-    // Add other stats fields like:
-    // pub most_busts_player_id: Option<usize>,
-    // pub luckiest_player_id: Option<usize>, // Define "luck" metric
-    // pub total_turns: usize,
+    /// Stats of individual players
+    pub player_stats: Vec<PlayerStats>,
+    /// Column that had the most total hops, normalized for column height
+    pub most_contested_column: ColumnID,
+    pub total_turns: usize,
 }

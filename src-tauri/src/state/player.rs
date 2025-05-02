@@ -1,11 +1,9 @@
+use super::{logic::calculate_croak_chance, Choice, ColumnID, DiceResult, PlayerID};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     fmt::{Debug, Display},
 };
-
-use serde::{Deserialize, Serialize};
-
-use super::DiceResult;
 
 /// The type of player
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
@@ -34,13 +32,13 @@ pub struct Player {
     /// The player can be a human, a safe AI, a normal AI, or a risky AI
     pub mode: PlayerMode,
     /// The player's ID
-    pub id: usize,
+    pub id: PlayerID,
     /// The player's name
     /// This is used to display the player's name in the UI
     pub name: String,
     /// The number of columns the player has won
     /// This is used to determine if the player has won
-    pub won_cols: Vec<usize>,
+    pub won_cols: Vec<ColumnID>,
 }
 
 /// Represents the outcome of a player's run.
@@ -79,18 +77,14 @@ impl From<bool> for RunOutcome {
 /// A player has multiple turns in a run
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PlayerTurn {
+    /// Columns that have been chosen before this run (max 3).
+    pub active_cols: HashSet<ColumnID>,
     /// Dice-rolls this turn, if they chose to hop.
     pub options: DiceResult,
     /// Columns chosen this turn.
-    pub chosen: Option<(usize, Option<usize>)>,
-}
-
-#[derive(Hash, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub struct HopSelection {
-    /// How many hops we've made this turn in this column.
-    pub distance: usize,
-    /// starting position in this column this turn.
-    pub start: usize,
+    pub chosen: Option<Choice>,
+    /// Record the outcome of this particular turn within the run.
+    pub outcome: RunOutcome,
 }
 
 /// Track of a player's options and decisions.
@@ -102,15 +96,14 @@ pub struct HopSelection {
 pub struct PlayerRun {
     pub turns: Vec<PlayerTurn>,
     /// Columns that are no longer accessible.
-    pub inactive_cols: HashSet<usize>,
+    pub inactive_cols: HashSet<ColumnID>,
     /// How the turn ended (None if run still in progress).
     pub outcome: RunOutcome,
 }
 
 impl Display for PlayerRun {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let inactive: Vec<&usize> = self.inactive_cols.iter().collect();
-        write!(f, "{} | {:?} >> ", self.outcome, inactive)?;
+        write!(f, "{} | {:?} >> ", self.outcome, self.inactive_cols)?;
         for turn in &self.turns {
             let dice = turn.options.dice;
             let choice = match turn.chosen {
@@ -118,7 +111,13 @@ impl Display for PlayerRun {
                 Some((first, None)) => format!("({first})"),
                 None => "()".to_string(),
             };
-            write!(f, "{:?}{} ", dice, choice)?;
+            let bust_chance =
+                calculate_croak_chance(&turn.active_cols, &self.inactive_cols) * 100.0;
+            write!(
+                f,
+                "{:.1}%->{:?}{:?}{} ",
+                bust_chance, dice, turn.active_cols, choice
+            )?;
         }
         Ok(())
     }
@@ -132,7 +131,7 @@ impl PlayerRun {
         turn
     }
     /// Start a new run for this player.
-    pub fn start(inactive_cols: HashSet<usize>) -> Self {
+    pub fn start(inactive_cols: HashSet<ColumnID>) -> Self {
         Self {
             turns: vec![],
             inactive_cols,
@@ -141,10 +140,25 @@ impl PlayerRun {
     }
     /// Starts a new turn for the player.  Multiple turns happen sequentially
     /// until a player banks or croaks.
-    pub fn start_turn(&mut self, options: DiceResult) {
+    pub fn start_turn(&mut self, options: DiceResult, active_cols: HashSet<ColumnID>) {
         self.turns.push(PlayerTurn {
+            active_cols,
             chosen: None,
             options,
+            outcome: RunOutcome::InProgress,
         });
     }
+}
+
+/// End game statistics for this player.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlayerStats {
+    /// Longest successful run
+    pub longest_run: usize,
+    /// Total turns unsuccessfully ended
+    pub croaked: usize,
+    /// Total turns successfully ended
+    pub banked: usize,
+    /// Calculated success rate compared to likelihood
+    pub luck: f32,
 }

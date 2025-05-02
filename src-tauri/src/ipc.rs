@@ -4,7 +4,9 @@ use anyhow::anyhow;
 use rand::random;
 
 use crate::{
-    state::{evaluate_moves, AppContext, DiceResult, GameState, SettingsState, StatsSummary},
+    state::{
+        evaluate_moves, AppContext, ColumnID, DiceResult, GameState, SettingsState, StatsSummary,
+    },
     utils::{generate_name, get_store},
 };
 
@@ -105,7 +107,7 @@ pub fn roll_dice(
     {
         // update game history record
         let mut history = state.hist.lock().unwrap();
-        history.player_mut().record_roll(&result);
+        history.player_mut().record_roll(&result, &selected);
         let store = get_store(&app)?;
         history.write_to_store(&store)?;
     }
@@ -115,8 +117,8 @@ pub fn roll_dice(
 #[tauri::command]
 /// Choose columns to risk
 pub fn choose_columns(
-    first: usize,
-    second: Option<usize>,
+    first: ColumnID,
+    second: Option<ColumnID>,
     state: tauri::State<AppContext>,
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
@@ -139,7 +141,6 @@ pub fn choose_columns(
         game_state.write_to_store(&store)?;
         let mut history = state.hist.lock().unwrap();
         history.player_mut().record_choice(first, second);
-        let store = get_store(&app)?;
         history.write_to_store(&store)?;
     }
     Ok(game_state.clone())

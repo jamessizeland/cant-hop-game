@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { DiceResult, GameState, PlayerChoice, SettingsState } from "types";
+import {
+  DiceResult,
+  GameState,
+  PlayerChoice,
+  SettingsState,
+  StatsSummary,
+} from "types";
 import { notifyError } from "./notifications";
 
 export async function initStore(): Promise<void> {
@@ -79,8 +85,8 @@ export async function getGameState(): Promise<GameState> {
 }
 
 /** Return the end of game statistics. */
-export async function getGameStatistics() {
-  return await invoke("get_game_statistics");
+export async function getGameStatistics(): Promise<StatsSummary> {
+  return await invoke<StatsSummary>("get_game_statistics");
 }
 
 /** Generate a random name, can be seeded for reproducibility.
