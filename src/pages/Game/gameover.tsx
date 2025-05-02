@@ -1,4 +1,5 @@
-import { stopGame } from "services/ipc";
+import { useEffect } from "react";
+import { getGameStatistics, startGame, stopGame } from "services/ipc";
 import { GameState, PlayerColors } from "types";
 
 type GameOverModalProps = {
@@ -11,6 +12,10 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
   }
   const winnerName = gameState.winner.name;
   const winnerColor = PlayerColors[gameState.winner.id - 1];
+
+  useEffect(() => {
+    getGameStatistics(); // TODO we will want to do something with the output from this later.
+  }, []);
 
   return (
     <dialog id="game-over" className="modal modal-open">
@@ -26,6 +31,15 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
           {winnerName} Wins!
         </h3>
         <div className="modal-action flex justify-center">
+          <button
+            className="btn"
+            onClick={async () => {
+              await startGame(gameState.settings);
+              window.location.href = "/game";
+            }}
+          >
+            Rematch?
+          </button>
           <button
             className="btn"
             onClick={async () => {
