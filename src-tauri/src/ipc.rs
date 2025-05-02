@@ -59,8 +59,7 @@ pub fn get_game_state(
 /// Return the end of game statistics summary.
 pub fn get_game_statistics(state: tauri::State<AppContext>) -> StatsSummary {
     let history = state.hist.lock().unwrap();
-    let stats = history.calculate_summary();
-    stats
+    history.calculate_summary()
 }
 
 #[tauri::command]

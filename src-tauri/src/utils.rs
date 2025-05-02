@@ -40,7 +40,6 @@ pub fn generate_name(seed: Option<u64>) -> String {
 
 pub fn get_store(app: &tauri::AppHandle) -> anyhow::Result<Arc<Store<Wry>>> {
     const STORE: &str = "store.json";
-    Ok(app
-        .store(STORE)
-        .context("failed to open store when saving game state.")?)
+    app.store(STORE)
+        .context("failed to open store when saving game state.")
 }
