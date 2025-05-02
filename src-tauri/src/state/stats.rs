@@ -83,7 +83,6 @@ impl History {
         self.player_mut().record_end_run(outcome);
         self.current_player = (self.current_player + 1) % self.players.len();
         self.player_mut().record_start_run(inactive_cols);
-        println!("{}", self);
     }
 
     /// Update game history from disk

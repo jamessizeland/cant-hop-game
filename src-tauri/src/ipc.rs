@@ -95,15 +95,12 @@ pub fn roll_dice(
     const DICE_SIDES: u8 = 6;
     const DICE_COUNT: usize = 4;
     let dice = [0; DICE_COUNT].map(|_| (random::<u8>() % DICE_SIDES + 1) as usize);
-    println!("Rolled dice: {:?}", dice);
     let game_state = state.game.lock().unwrap();
 
     let selected = game_state.get_selected();
     let unavailable = game_state.get_unavailable();
 
-    println!("Selected columns: {:?}", selected);
     let choices = evaluate_moves(dice, &selected, &unavailable);
-    println!("Available moves: {:?}", choices);
     let result = DiceResult { dice, choices };
     {
         // update game history record
@@ -123,7 +120,6 @@ pub fn choose_columns(
     state: tauri::State<AppContext>,
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
-    println!("Choosing columns: {} {:?}", first, second);
     let mut game_state = state.game.lock().unwrap();
     let Some(col1) = game_state.columns.get_mut(first) else {
         return Err(anyhow!("Invalid column index {}", first).into());
@@ -135,7 +131,7 @@ pub fn choose_columns(
         };
         col2.risked += 1;
     };
-    println!("Risked columns: {:?}", game_state);
+    // println!("Risked columns: {:?}", game_state);
     game_state.hops += 1;
     {
         // record outcome
@@ -164,6 +160,8 @@ pub fn end_turn(
 
     game_state.next_player(outcome);
     history.next_player(outcome, game_state.get_unavailable());
+    println!("{}", history);
+    println!("{:?}", game_state);
 
     game_state.write_to_store(&store)?;
     history.write_to_store(&store)?;
