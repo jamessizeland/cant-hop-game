@@ -5,7 +5,7 @@ use super::{
 use anyhow::anyhow;
 use core::panic;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, sync::Mutex};
+use std::{collections::HashSet, fmt::Display, sync::Mutex};
 use tauri_plugin_store::Store;
 
 pub type HistoryMutex = Mutex<History>;
@@ -37,7 +37,7 @@ impl PlayerHistory {
     }
     /// Record the outcome of this run when it ends for any reason.
     fn record_end_run(&mut self, outcome: RunOutcome) {
-        self.run_mut().outcome = Some(outcome);
+        self.run_mut().outcome = outcome;
     }
 }
 
@@ -83,6 +83,7 @@ impl History {
         self.player_mut().record_end_run(outcome);
         self.current_player = (self.current_player + 1) % self.players.len();
         self.player_mut().record_start_run(inactive_cols);
+        println!("{}", self);
     }
 
     /// Update game history from disk
@@ -105,6 +106,29 @@ impl History {
     pub fn calculate_summary(&self) -> StatsSummary {
         dbg!(self);
         StatsSummary { longest_run: 123 }
+    }
+}
+
+impl Display for History {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut run = 0;
+        writeln!(f, "run {}", run + 1)?;
+        'outer: loop {
+            // iterate through each run until we hit the end.
+            for player in &self.players {
+                let Some(player_run) = player.0.get(run) else {
+                    break 'outer;
+                };
+                writeln!(f, "{}", player_run)?;
+                if player_run.outcome == RunOutcome::InProgress {
+                    break 'outer;
+                }
+            }
+            run += 1;
+            writeln!(f, "----------")?;
+            writeln!(f, "run {}", run + 1)?;
+        }
+        Ok(())
     }
 }
 

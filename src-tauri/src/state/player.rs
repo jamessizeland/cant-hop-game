@@ -1,4 +1,7 @@
-use std::{collections::HashSet, fmt::Debug};
+use std::{
+    collections::HashSet,
+    fmt::{Debug, Display},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -41,12 +44,26 @@ pub struct Player {
 }
 
 /// Represents the outcome of a player's run.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum RunOutcome {
+    #[default]
+    /// Turn unfinished.
+    InProgress,
     /// Player ran out of options and went bust.
     Croaked,
     /// Player chose to stop voluntarily.
     Banked,
+}
+
+impl Display for RunOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let outcome = match self {
+            RunOutcome::InProgress => "In Progress",
+            RunOutcome::Croaked => "Croaked",
+            RunOutcome::Banked => "Banked",
+        };
+        write!(f, "{outcome}")
+    }
 }
 
 impl From<bool> for RunOutcome {
@@ -62,10 +79,10 @@ impl From<bool> for RunOutcome {
 /// A player has multiple turns in a run
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PlayerTurn {
-    /// Columns chosen this turn.
-    pub chosen: Option<(usize, Option<usize>)>,
     /// Dice-rolls this turn, if they chose to hop.
     pub options: DiceResult,
+    /// Columns chosen this turn.
+    pub chosen: Option<(usize, Option<usize>)>,
 }
 
 #[derive(Hash, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -87,7 +104,24 @@ pub struct PlayerRun {
     /// Columns that are no longer accessible.
     pub inactive_cols: HashSet<usize>,
     /// How the turn ended (None if run still in progress).
-    pub outcome: Option<RunOutcome>,
+    pub outcome: RunOutcome,
+}
+
+impl Display for PlayerRun {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let inactive: Vec<&usize> = self.inactive_cols.iter().collect();
+        write!(f, "{} | {:?} >> ", self.outcome, inactive)?;
+        for turn in &self.turns {
+            let dice = turn.options.dice;
+            let choice = match turn.chosen {
+                Some((first, Some(second))) => format!("({first} & {second})"),
+                Some((first, None)) => format!("({first})"),
+                None => "()".to_string(),
+            };
+            write!(f, "{:?}{} ", dice, choice)?;
+        }
+        Ok(())
+    }
 }
 
 impl PlayerRun {
@@ -102,7 +136,7 @@ impl PlayerRun {
         Self {
             turns: vec![],
             inactive_cols,
-            outcome: None,
+            outcome: RunOutcome::InProgress,
         }
     }
     /// Starts a new turn for the player.  Multiple turns happen sequentially
