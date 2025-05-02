@@ -146,9 +146,9 @@ pub fn choose_columns(
 }
 
 #[tauri::command]
-/// Player has chosen to end their turn, or has been forced to end it by
+/// Player has chosen to end their run, or has been forced to end it by
 /// pushing their luck too far, and running out of options.
-pub fn end_turn(
+pub fn end_run(
     forced: bool,
     state: tauri::State<AppContext>,
     app: tauri::AppHandle,

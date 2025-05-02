@@ -14,7 +14,7 @@ pub fn run() {
             ipc::stop_game,
             ipc::roll_dice,
             ipc::choose_columns,
-            ipc::end_turn,
+            ipc::end_run,
             ipc::get_game_state,
             ipc::get_name,
             ipc::get_game_statistics,
