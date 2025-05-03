@@ -18,7 +18,8 @@ pub fn run() {
             ipc::get_game_state,
             ipc::get_name,
             ipc::get_game_statistics,
-            // ipc::ai::check_continue,
+            ipc::ai::check_continue,
+            ipc::ai::choose_column,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

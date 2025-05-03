@@ -99,5 +99,11 @@ export async function getName(seed?: number): Promise<string> {
 
 /** Check if the AI player should hop or stop. */
 export async function aiCheckContinue(): Promise<boolean> {
-  return await invoke<boolean>("ai_check_continue");
+  return await invoke<boolean>("check_continue");
+}
+
+export async function aiChooseColumn(
+  options: DiceResult
+): Promise<PlayerChoice> {
+  return await invoke<PlayerChoice>("choose_column", { options });
 }

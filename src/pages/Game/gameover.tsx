@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getGameStatistics, startGame, stopGame } from "services/ipc";
-import { GameState, Player, PlayerColors, StatsSummary } from "types";
+import { GameState, PlayerColors, StatsSummary } from "types";
 
 type GameOverModalProps = {
   gameState: GameState;

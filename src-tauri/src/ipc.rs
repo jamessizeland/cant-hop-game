@@ -1,4 +1,4 @@
-// pub mod ai;
+pub mod ai;
 
 use anyhow::anyhow;
 use rand::random;
@@ -47,13 +47,12 @@ pub fn get_game_state(
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
     let mut game_state = state.game.lock().unwrap();
-    println!("Game State: {:?}", game_state);
     if !game_state.in_progress {
         game_state.clear();
     }
     let store = get_store(&app)?;
     game_state.write_to_store(&store)?;
-    println!("Getting game state: {:?}", game_state);
+    // println!("Getting game state: {:?}", game_state);
     Ok(game_state.clone())
 }
 
@@ -122,6 +121,7 @@ pub fn choose_columns(
     state: tauri::State<AppContext>,
     app: tauri::AppHandle,
 ) -> tauri::Result<GameState> {
+    println!("choosing columns: {:?} {:?}", first, second);
     let mut game_state = state.game.lock().unwrap();
     let Some(col1) = game_state.columns.get_mut(first) else {
         return Err(anyhow!("Invalid column index {}", first).into());

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::{Choice, ColumnID};
 
 // Total number of possible outcomes when rolling 4 six-sided dice.
-const TOTAL_ROLLS: f32 = 6. * 6. * 6. * 6.; // 1296
+const TOTAL_ROLLS: f64 = 6. * 6. * 6. * 6.; // 1296
 
 /// Evaluate the available moves from the four dice.
 /// - They must be paired up and cannot be reused.
@@ -74,7 +74,7 @@ pub fn evaluate_moves(
 pub fn calculate_croak_chance(
     active_cols: &HashSet<ColumnID>,
     inactive_cols: &HashSet<ColumnID>,
-) -> f32 {
+) -> f64 {
     // If no columns are active, you cannot bust based on column availability.
     // Your evaluate_moves should ideally handle this, but an explicit check is safer.
     if active_cols.is_empty() {
@@ -101,7 +101,7 @@ pub fn calculate_croak_chance(
     }
 
     // The probability is the number of bust outcomes divided by the total possible outcomes.
-    bust_rolls as f32 / TOTAL_ROLLS
+    bust_rolls as f64 / TOTAL_ROLLS
 }
 
 #[cfg(test)]

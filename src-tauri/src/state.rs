@@ -1,13 +1,14 @@
-// mod ai;
 mod columns;
 mod game;
 mod logic;
 mod player;
 mod stats;
 
+pub use columns::Column;
 pub use game::{GameState, GameStateMutex};
-pub use logic::evaluate_moves;
+pub use logic::{calculate_croak_chance, evaluate_moves};
 use player::Player;
+pub use player::PlayerMode;
 use serde::{Deserialize, Serialize};
 pub use stats::{HistoryMutex, StatsSummary};
 use std::{collections::HashSet, fmt::Debug};
