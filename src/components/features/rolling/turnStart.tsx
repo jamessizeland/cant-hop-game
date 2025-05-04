@@ -1,17 +1,18 @@
 import { AiAction } from "hooks/useAiTurn";
 import { motion } from "motion/react";
-import { PlayerMode } from "types";
+import { PlayerColors, PlayerMode } from "types";
 
 const TurnStartContainer: React.FC<{
+  playerIndex: number;
   mode: PlayerMode;
   hops: number;
   aiAction: AiAction;
   updateDice: () => Promise<void>;
   endPlayerRun: (forced: boolean) => Promise<void>;
-}> = ({ mode, hops, aiAction, updateDice, endPlayerRun }) => {
+}> = ({ playerIndex, mode, hops, aiAction, updateDice, endPlayerRun }) => {
   // Define highlight style - adjust border color/width or use Tailwind classes (e.g., ring-4 ring-blue-500)
   const highlightStyle = {
-    borderColor: "blue",
+    borderColor: PlayerColors[playerIndex],
     borderWidth: "4px",
     borderStyle: "solid",
   };
@@ -36,7 +37,7 @@ const TurnStartContainer: React.FC<{
           delay: 8,
         }}
         // Apply base classes and conditional highlight style
-        className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
+        className="btn btn-xl text-black disabled:opacity-80 bg-green-400"
         style={mode !== "Human" && aiAction === "hop" ? highlightStyle : {}}
       >
         Hop
@@ -53,7 +54,7 @@ const TurnStartContainer: React.FC<{
           exit={{ scale: 0 }}
           transition={{ duration: 0.1 }}
           // Apply base classes and conditional highlight style
-          className="btn btn-xl text-black disabled:opacity-50 bg-green-400"
+          className="btn btn-xl text-black disabled:opacity-80 bg-green-400"
           style={mode !== "Human" && aiAction === "stop" ? highlightStyle : {}}
         >
           Stop

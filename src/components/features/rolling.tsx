@@ -89,6 +89,7 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
           updateDice={updateDice}
           endPlayerRun={endPlayerRun}
           aiAction={aiAction}
+          playerIndex={playerIndex}
         />
       )}
       <DiceContainer playerIndex={playerIndex} dice={dice.dice} />

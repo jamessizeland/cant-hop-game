@@ -33,12 +33,12 @@ const ChoiceContainer: React.FC<{
 
   // Define highlight style - adjust as needed
   const highlightStyle = {
-    borderColor: "blue",
+    borderColor: PlayerColors[playerIndex],
     borderWidth: "4px",
     borderStyle: "solid",
   };
   const croakedHighlightStyle = {
-    borderColor: "red",
+    borderColor: PlayerColors[playerIndex],
     borderWidth: "4px",
     borderStyle: "solid",
   };
@@ -59,7 +59,7 @@ const ChoiceContainer: React.FC<{
           return (
             <motion.button
               key={index} // Key on the motion component
-              className="btn btn-outline btn-primary btn-lg shadow justify-center text-2xl font-bold h-16 min-w-16"
+              className="btn btn-outline btn-primary btn-lg shadow justify-center text-2xl font-bold h-16 min-w-16 disabled:opacity-80"
               style={{
                 borderColor: PlayerColors[playerIndex], // Base border color
                 color: PlayerColors[playerIndex],

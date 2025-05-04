@@ -17,7 +17,6 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
   useEffect(() => {
     getGameStatistics().then((stats) => {
       setStats(stats);
-      alert(JSON.stringify(stats));
     });
   }, []);
 
