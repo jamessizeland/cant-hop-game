@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { aiCheckContinue, chooseColumns, endRun, rollDice } from "services/ipc";
+import React, { useState, useCallback } from "react";
+import { chooseColumns, endRun, rollDice } from "services/ipc";
 import { notifyError } from "services/notifications";
 import { DiceResult, GameState, PlayerChoice } from "types";
 import DiceContainer from "./rolling/dice";
@@ -7,6 +7,7 @@ import ChoiceContainer from "./rolling/choice";
 import TurnStartContainer from "./rolling/turnStart";
 import { useTour } from "@reactour/tour";
 import { MdQuestionMark } from "react-icons/md";
+import { useAiTurn } from "hooks/useAiTurn";
 
 type RollerProps = {
   setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;
@@ -25,19 +26,8 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
   } = useTour();
   const [showTutorial, setShowTutorial] = useState(true);
 
-  useEffect(() => {
-    if (player.mode !== "Human") {
-      setTimeout(async () => {
-        aiCheckContinue().then((isContinue) => {
-          if (!isContinue) {
-            endPlayerRun(false);
-          }
-        });
-      }, 500);
-    }
-  }, [gameState]);
-
-  const updateDice = async () => {
+  // Wrap functions passed to the hook in useCallback to stabilize their references
+  const updateDice = useCallback(async () => {
     setShowTutorial(false); // tutorial only valid at very start of the game.
     // Clear previous roll if needed.
     setDice({ dice: [], choices: [] });
@@ -51,27 +41,44 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
         setCurrentStep(currentStep + 1);
       }
     }, 100);
-  };
+  }, [isTourOpen, currentStep, setCurrentStep]);
 
-  const makeChoice = async (choice: PlayerChoice) => {
-    const state = await chooseColumns(choice);
-    setDice({ dice: [], choices: [] });
-    if (state) {
-      console.log("updating choices");
-      setGameState(state);
-      if (isTourOpen && currentStep === 3) {
-        setCurrentStep(currentStep + 1);
+  const makeChoice = useCallback(
+    async (choice: PlayerChoice) => {
+      const state = await chooseColumns(choice);
+      setDice({ dice: [], choices: [] });
+      if (state) {
+        console.log("updating choices");
+        setGameState(state);
+        if (isTourOpen && currentStep === 3) {
+          setCurrentStep(currentStep + 1);
+        }
+      } else {
+        notifyError("Something went wrong choosing columns", "choiceError");
       }
-    } else {
-      notifyError("Something went wrong choosing columns", "choiceError");
-    }
-  };
+    },
+    [setGameState, isTourOpen, currentStep, setCurrentStep]
+  );
 
-  const endPlayerRun = async (forced: boolean) => {
-    const state = await endRun(forced);
-    setDice({ dice: [], choices: [] });
-    setGameState(state);
-  };
+  const endPlayerRun = useCallback(
+    async (forced: boolean) => {
+      const state = await endRun(forced);
+      setDice({ dice: [], choices: [] });
+      setGameState(state);
+    },
+    [setGameState]
+  );
+
+  // --- Use the AI Hook ---
+  const { aiAction, aiTargetChoice } = useAiTurn({
+    player,
+    dice,
+    gameState,
+    isTourOpen,
+    updateDice,
+    makeChoice,
+    endPlayerRun,
+  });
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
@@ -81,6 +88,8 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
           hops={gameState.hops}
           updateDice={updateDice}
           endPlayerRun={endPlayerRun}
+          aiAction={aiAction}
+          playerIndex={playerIndex}
         />
       )}
       <DiceContainer playerIndex={playerIndex} dice={dice.dice} />
@@ -90,6 +99,8 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
         mode={player.mode}
         endPlayerTurn={endPlayerRun}
         makeChoice={makeChoice}
+        aiAction={aiAction}
+        aiTargetChoice={aiTargetChoice}
       />
       {showTutorial && player.mode === "Human" && (
         <button

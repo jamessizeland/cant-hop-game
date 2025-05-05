@@ -123,7 +123,7 @@ impl History {
                 let mut banked = 0;
                 let mut luck = 0.0;
                 player.0.iter().for_each(|run| {
-                    let run_luck: f32 = run
+                    let run_luck: f64 = run
                         .turns
                         .iter()
                         .map(|turn| {
@@ -162,7 +162,7 @@ impl History {
                     longest_run,
                     croaked,
                     banked,
-                    luck: luck / total_turns as f32,
+                    luck: luck / total_turns as f64,
                 }
             })
             .collect();

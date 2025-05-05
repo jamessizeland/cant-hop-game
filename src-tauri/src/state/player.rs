@@ -160,5 +160,5 @@ pub struct PlayerStats {
     /// Total turns successfully ended
     pub banked: usize,
     /// Calculated success rate compared to likelihood
-    pub luck: f32,
+    pub luck: f64,
 }

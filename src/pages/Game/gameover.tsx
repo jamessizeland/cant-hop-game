@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getGameStatistics, startGame, stopGame } from "services/ipc";
-import { GameState, Player, PlayerColors, StatsSummary } from "types";
+import { GameState, PlayerColors, StatsSummary } from "types";
 
 type GameOverModalProps = {
   gameState: GameState;
@@ -17,7 +17,6 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
   useEffect(() => {
     getGameStatistics().then((stats) => {
       setStats(stats);
-      alert(JSON.stringify(stats));
     });
   }, []);
 
@@ -85,6 +84,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
           <button
             className="btn"
             onClick={async () => {
+              await stopGame();
               await startGame(gameState.settings);
               window.location.href = "/game";
             }}

@@ -127,12 +127,8 @@ function PlayerForm({ first, second }: { first: string; second: string }) {
                       >
                         <option value="Human">Human</option>
                         <option value="Safe">AI: Safe</option>
-                        <option disabled value="Normal">
-                          AI: Normal
-                        </option>
-                        <option disabled value="Risky">
-                          AI: Risky
-                        </option>
+                        <option value="Normal">AI: Normal</option>
+                        <option value="Risky">AI: Risky</option>
                       </select>
                     )}
                   </form.Field>

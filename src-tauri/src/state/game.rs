@@ -142,8 +142,12 @@ impl GameState {
         Ok(())
     }
     /// Set up a new game state
-    pub fn new_game(&mut self, settings: SettingsState) {
+    pub fn new_game(&mut self, mut settings: SettingsState) {
         *self = Self::default();
+        // make sure that the won columns list is empty for each player.
+        settings.players.iter_mut().for_each(|player| {
+            player.won_cols.clear();
+        });
         self.settings = settings;
         self.in_progress = true;
     }
