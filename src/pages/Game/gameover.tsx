@@ -84,6 +84,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
           <button
             className="btn"
             onClick={async () => {
+              await stopGame();
               await startGame(gameState.settings);
               window.location.href = "/game";
             }}
