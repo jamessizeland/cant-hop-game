@@ -68,7 +68,7 @@ impl History {
         if num_players <= 1 {
             return Err(anyhow!("Number of players must be greater than 1"));
         }
-        if num_players >= 4 {
+        if num_players > 4 {
             return Err(anyhow!("Number of players must be less than or equal to 4"));
         }
         self.players = vec![PlayerHistory::default(); num_players];
