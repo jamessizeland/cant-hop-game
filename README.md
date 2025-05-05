@@ -1,19 +1,33 @@
 # Can't Hop
 
-This is a game for fun, playing around with Tauri.  Its a push your luck game, where you roll dice and decide whether to stick or risk your position to move forward.
+This is a game for fun, playing around with Tauri.  Its a push your luck game, called Can't Stop with a froggy twist.  You roll dice and decide whether to stick or risk your position to move forward. (Hop or Stop).
 
-Only planning on local multiplayer so far.
+You roll four dice and pair them up to select columns to progress on.
 
-## Recommended IDE Setup
+Each run you choose up to three columns to progress and then must roll at least one of those columns again each turn.
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+If you can't roll the numbers you need you go bust (Croaked!) and lose your progress this turn.
 
-![demo](./img/cant-hop.gif)
+## Features
 
-## Progress
+- Up to four players locally
+- Bot opponents with three risk levels
+- Randomised silly frog name generator
+- Tutorial mode
+- End game stats
 
-![splash](./img/cant-hop-splash.png)
+## Technology
 
-![settings](./img/settings-progress-1.png)
+This is a Tauri App designed for mobile first.  It uses a React/TypeScript/Tailwindcss stack for the UI.
 
-![game](./img/game-progress-1.png)
+## Screenshots
+
+![demo](./img/cant-hop-ui.gif)
+
+![settings](./img/cant-hop-settings.png)
+
+![game](./img/game.png)
+
+![croaked](./img/croaked.png)
+
+![stats-screen](./img/stats-screen.png)
