@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 mod ipc;
 mod state;
 mod utils;
@@ -8,6 +10,11 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .manage(state::AppContext::default())
+        .setup(|app| {
+            #[cfg(debug_assertions)] // only include this code on debug builds
+            app.get_webview_window("main").unwrap().open_devtools();
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             ipc::init_store,
             ipc::start_game,
