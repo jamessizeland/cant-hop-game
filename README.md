@@ -1,5 +1,9 @@
 # Can't Hop
 
+[![publish android](https://github.com/jamessizeland/cant-hop-game/actions/workflows/build-android.yml/badge.svg)](https://github.com/jamessizeland/cant-hop-game/actions/workflows/build-android.yml)
+[![publish desktop](https://github.com/jamessizeland/cant-hop-game/actions/workflows/build.yml/badge.svg)](https://github.com/jamessizeland/cant-hop-game/actions/workflows/build.yml)
+![MIT/Apache-2.0 licensed](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue?labelColor=1C2C2E&style=flat-square)
+
 This is a game for fun, playing around with Tauri.  Its a push your luck game, called Can't Stop with a froggy twist.  You roll dice and decide whether to stick or risk your position to move forward. (Hop or Stop).
 
 You roll four dice and pair them up to select columns to progress on.
