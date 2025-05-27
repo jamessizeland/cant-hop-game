@@ -1,3 +1,4 @@
+#[cfg(debug_assertions)] // only include this code on debug builds
 use tauri::Manager;
 
 mod ipc;
@@ -10,9 +11,9 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .manage(state::AppContext::default())
-        .setup(|app| {
+        .setup(|_app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
-            app.get_webview_window("main").unwrap().open_devtools();
+            _app.get_webview_window("main").unwrap().open_devtools();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
