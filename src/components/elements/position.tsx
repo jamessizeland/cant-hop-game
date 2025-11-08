@@ -20,7 +20,7 @@ const PositionMarker = (props: PositionProps) => {
   const initialRotation = useMemo(() => Math.random() * 360, []);
 
   return (
-    <div className="relative w-8 h-8 flex items-center justify-center">
+    <div className="relative w-[9vw] h-[9vw] max-w-8 max-h-8 flex items-center justify-center">
       {/* Render LilyPad first so it's naturally behind FrogPositioning */}
       <div
         className="absolute inset-0 z-0" // Position absolutely to fill parent, base z-index
@@ -68,23 +68,23 @@ const FrogPositioning = ({
     {
       top: "50%",
       left: "50%",
-      fontSize: "2rem",
+      fontSize: "clamp(1rem, 9vw, 2rem)",
     },
   ];
   const frogPositions2 = [
-    { top: "40%", left: "30%", fontSize: "1.8rem" },
-    { top: "60%", left: "60%", fontSize: "1.8rem" },
+    { top: "40%", left: "30%", fontSize: "clamp(0.9rem, 8vw, 1.8rem)" },
+    { top: "60%", left: "60%", fontSize: "clamp(0.9rem, 8vw, 1.8rem)" },
   ];
   const frogPositions3 = [
-    { top: "30%", left: "50%", fontSize: "1.6rem" },
-    { top: "65%", left: "30%", fontSize: "1.6rem" },
-    { top: "65%", left: "70%", fontSize: "1.6rem" },
+    { top: "30%", left: "50%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
+    { top: "65%", left: "30%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
+    { top: "65%", left: "70%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
   ];
   const frogPositions4 = [
-    { top: "30%", left: "30%", fontSize: "1.2rem" },
-    { top: "70%", left: "70%", fontSize: "1.2rem" },
-    { top: "30%", left: "70%", fontSize: "1.2rem" },
-    { top: "70%", left: "30%", fontSize: "1.2rem" },
+    { top: "30%", left: "30%", fontSize: "1.3rem" },
+    { top: "70%", left: "70%", fontSize: "1.3rem" },
+    { top: "30%", left: "70%", fontSize: "1.3rem" },
+    { top: "70%", left: "30%", fontSize: "1.3rem" },
   ];
 
   const frogPositions = useMemo(() => {
@@ -192,7 +192,7 @@ const FrogPositioning = ({
               <GiFrogFoot2
                 style={{
                   color: PlayerColors[currentPlayer],
-                  fontSize: "2.2rem",
+                  fontSize: "clamp(1rem, 9vw, 2.2rem)",
                 }}
               />
             </motion.div>

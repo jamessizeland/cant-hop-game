@@ -63,7 +63,7 @@ const ChoiceContainer: React.FC<{
               style={{
                 borderColor: PlayerColors[playerIndex], // Base border color
                 color: PlayerColors[playerIndex],
-                ...(isAiChoosingThis ? highlightStyle : {}), // Apply highlight if AI is choosing this
+                ...(isAiChoosingThis && highlightStyle), // Apply highlight if AI is choosing this
               }}
               type="button"
               disabled={mode !== "Human"}
@@ -74,7 +74,7 @@ const ChoiceContainer: React.FC<{
               animate="visible"
               variants={choicesVariants}
             >
-              {choice[0]} {choice[1] ? `& ${choice[1]}` : ""}
+              {choice[0]} {choice[1] && `& ${choice[1]}`}
             </motion.button>
           );
         })
@@ -85,9 +85,9 @@ const ChoiceContainer: React.FC<{
           style={{
             borderColor: PlayerColors[playerIndex],
             color: PlayerColors[playerIndex],
-            ...(mode !== "Human" && aiAction === "croaked"
-              ? croakedHighlightStyle
-              : {}), // Highlight if AI is croaked
+            ...(mode !== "Human" &&
+              aiAction === "croaked" &&
+              croakedHighlightStyle), // Highlight if AI is croaked
           }}
           type="button"
           onClick={async () => await endPlayerTurn(true)}
