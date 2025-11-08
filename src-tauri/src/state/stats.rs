@@ -1,8 +1,8 @@
 use crate::state::{columns::HEIGHTS, logic::calculate_croak_chance};
 
 use super::{
-    player::{PlayerRun, PlayerStats, RunOutcome},
     ColumnID, DiceResult, PlayerID,
+    player::{PlayerRun, PlayerStats, RunOutcome},
 };
 use anyhow::anyhow;
 use core::panic;
@@ -207,7 +207,7 @@ impl Display for History {
 }
 
 /// End game statistics for a specific player
-
+///
 /// Holds the calculated statistics for a completed game.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatsSummary {
