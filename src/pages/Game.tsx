@@ -39,7 +39,7 @@ export function GamePage() {
             playerName={playerName}
             playerIndex={gameState.current_player}
           />
-          <div className="w-screen flex items-center justify-center flex-col py-3 px-5 mt-7">
+          <div className="w-screen flex flex-col py-3 px-5 mt-7 min-h-0">
             <GameBoard gameState={gameState} />
           </div>
           {gameState.winner === null && (

@@ -8,10 +8,7 @@ type BoardProps = {
 
 const GameBoard: React.FC<BoardProps> = ({ gameState }) => {
   return (
-    <div
-      className="flex items-center w-screen justify-center"
-      id="board-container"
-    >
+    <div className="flex items-center justify-center" id="board-container">
       {gameState.columns.map((column, index: number) => (
         <Bar
           key={index}

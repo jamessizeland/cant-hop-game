@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, collections::HashSet};
 
 use crate::state::{
-    calculate_croak_chance, AppContext, Choice, Column, ColumnID, DiceResult, PlayerMode,
+    AppContext, Choice, Column, ColumnID, DiceResult, PlayerMode, calculate_croak_chance,
 };
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone, Copy)]
@@ -33,7 +33,7 @@ impl EvaluateColumn {
                 Self {
                     banked_distance,
                     risked: column.risked,
-                    topped: banked_distance - column.risked <= 0,
+                    topped: (banked_distance - column.risked) == 0,
                 }
             })
             .collect()
@@ -58,7 +58,7 @@ pub fn check_continue(state: tauri::State<AppContext>) -> bool {
     let hops = game_state.hops;
     // Define how much the threshold decreases per hop made in the current turn
     const RISK_AVERSION_PER_HOP: f64 = 0.05; // e.g., 5% more cautious per hop
-                                             // Define a minimum threshold to prevent it from becoming zero or negative too easily
+    // Define a minimum threshold to prevent it from becoming zero or negative too easily
     const MINIMUM_RISK_THRESHOLD: f64 = 0.05; // e.g., always willing to take at least a 5% risk
 
     let croak_chance = calculate_croak_chance(&active_cols, &inactive_cols);
