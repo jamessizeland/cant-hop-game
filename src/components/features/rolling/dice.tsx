@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion, Variants } from "motion/react";
 import {
   GiDiceSixFacesFive,
   GiDiceSixFacesFour,
@@ -38,7 +38,7 @@ const DiceContainer: React.FC<{ playerIndex: number; dice: number[] }> = ({
   playerIndex,
   dice,
 }) => {
-  const diceVariants = {
+  const diceVariants: Variants = {
     hidden: { opacity: 0, scale: 0.3, rotate: 45, filter: "blur(5px)" },
     visible: (custom: number) => ({
       opacity: 1,
