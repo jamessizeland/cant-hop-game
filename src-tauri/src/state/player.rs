@@ -1,4 +1,4 @@
-use super::{logic::calculate_croak_chance, Choice, ColumnID, DiceResult, PlayerID};
+use super::{Choice, ColumnID, DiceResult, PlayerID, logic::calculate_croak_chance};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -159,6 +159,8 @@ pub struct PlayerStats {
     pub croaked: usize,
     /// Total turns successfully ended
     pub banked: usize,
+    /// Total dice rolls taken by this player
+    pub total_rolls: usize,
     /// Calculated success rate compared to likelihood
     pub luck: f64,
 }

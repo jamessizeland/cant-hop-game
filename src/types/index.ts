@@ -83,6 +83,8 @@ export type PlayerStats = {
   croaked: number;
   /** Total turns successfully ended */
   banked: number;
+  /** Total dice rolls taken by this player */
+  total_rolls: number;
   /** Calculated success rate compared to likelihood */
   luck: number;
 };
