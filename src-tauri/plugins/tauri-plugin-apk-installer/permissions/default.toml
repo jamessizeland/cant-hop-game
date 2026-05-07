@@ -1,0 +1,3 @@
+[default]
+description = "Default permissions for the APK installer plugin"
+permissions = ["allow-install-package"]
