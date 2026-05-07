@@ -1,7 +1,7 @@
 import { relaunch } from "@tauri-apps/plugin-process";
 import { platform } from "@tauri-apps/plugin-os";
 import { check, DownloadEvent } from "@tauri-apps/plugin-updater";
-import { notifyError, notifyProgress } from "./notifications";
+import { notifyProgress } from "./notifications";
 
 let updateCheckStarted = false;
 
@@ -61,6 +61,5 @@ export async function checkForAppUpdate(): Promise<void> {
     await relaunch();
   } catch (error) {
     console.error("Error during app update:", error);
-    // notifyError(`Could not update app: ${error}`, "appUpdateError", 6000);
   }
 }
