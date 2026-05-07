@@ -1,5 +1,5 @@
 import { relaunch } from "@tauri-apps/plugin-process";
-import { platform } from "@tauri-apps/plugin-os";
+import { arch, platform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { check, DownloadEvent } from "@tauri-apps/plugin-updater";
 import { Channel, invoke } from "@tauri-apps/api/core";
@@ -20,7 +20,20 @@ const isUpdaterRuntime = (): boolean =>
   "__TAURI_OS_PLUGIN_INTERNALS__" in window &&
   ["android", "linux", "macos", "windows"].includes(platform());
 
-const ANDROID_UPDATE_TARGET = "android";
+const androidUpdateTarget = (): string => {
+  switch (arch()) {
+    case "aarch64":
+      return "android-arm64";
+    case "arm":
+      return "android-arm";
+    case "x86":
+      return "android-x86";
+    case "x86_64":
+      return "android-x86_64";
+    default:
+      return "android";
+  }
+};
 
 interface DownloadProgress {
   progress: number;
@@ -56,8 +69,9 @@ const updateDownloadUrl = (
   target: string
 ): string => {
   const platforms = rawJson.platforms;
-  if (platforms && typeof platforms === "object" && target in platforms) {
-    const platformEntry = (platforms as Record<string, unknown>)[target];
+  if (platforms && typeof platforms === "object") {
+    const platformMap = platforms as Record<string, unknown>;
+    const platformEntry = platformMap[target] ?? platformMap.android;
     if (
       platformEntry &&
       typeof platformEntry === "object" &&
@@ -86,7 +100,7 @@ export async function checkForAppUpdate(): Promise<void> {
   try {
     const runtimePlatform = currentPlatform();
     const androidTarget =
-      runtimePlatform === "android" ? ANDROID_UPDATE_TARGET : null;
+      runtimePlatform === "android" ? androidUpdateTarget() : null;
     const update = await check(
       androidTarget ? { target: androidTarget } : undefined
     );
