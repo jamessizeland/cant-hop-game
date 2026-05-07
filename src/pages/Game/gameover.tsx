@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
-import { getGameStatistics, startGame, stopGame } from "@/services/ipc";
-import { GameState, PlayerColors, PlayerStats, StatsSummary } from "@/types";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { notifyError, notifySuccess } from "@/services/notifications";
+import {
+  getCareerStatistics,
+  getGameStatistics,
+  startGame,
+  stopGame,
+} from "@/services/ipc";
+import {
+  AchievementRecord,
+  CareerStats,
+  GameState,
+  PlayerColors,
+  PlayerStats,
+  StatsSummary,
+} from "@/types";
+import { BiCopy, BiLogoWhatsapp } from "react-icons/bi";
 
 type GameOverModalProps = {
   gameState: GameState;
@@ -69,10 +84,14 @@ function getVerdict(playerStat: PlayerStats, didWin: boolean): Verdict {
 
 const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
   const [stats, setStats] = useState<StatsSummary>();
+  const [careerStats, setCareerStats] = useState<CareerStats>();
 
   useEffect(() => {
     getGameStatistics().then((stats) => {
       setStats(stats);
+    });
+    getCareerStatistics().then((stats) => {
+      setCareerStats(stats);
     });
   }, []);
 
@@ -85,6 +104,46 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
   );
   const safeWinnerIndex = winnerIndex >= 0 ? winnerIndex : 0;
   const winnerColor = PlayerColors[safeWinnerIndex];
+  const latestAchievementTime = careerStats?.achievements.reduce(
+    (latest, achievement) => Math.max(latest, achievement.achieved_at_ms),
+    0
+  );
+  const latestAchievements = careerStats?.achievements
+    .filter(
+      (achievement) =>
+        achievement.achieved_at_ms === latestAchievementTime &&
+        gameState.settings.players.some(
+          (player) => player.name === achievement.player_name
+        )
+    )
+    .reverse();
+  const shareSummary = stats
+    ? buildShareSummary(
+        gameState,
+        stats,
+        safeWinnerIndex,
+        latestAchievements ?? []
+      )
+    : "";
+
+  async function copyShareSummary() {
+    if (!shareSummary) return;
+    try {
+      await copyText(shareSummary);
+      notifySuccess("Game summary copied", "ShareSummaryCopied");
+    } catch (error) {
+      notifyError(`Failed to copy summary: ${error}`, "ShareSummaryCopyError");
+    }
+  }
+
+  async function shareToWhatsApp() {
+    if (!shareSummary) return;
+    try {
+      await openUrl(`https://wa.me/?text=${encodeURIComponent(shareSummary)}`);
+    } catch (error) {
+      notifyError(`Failed to open WhatsApp: ${error}`, "ShareWhatsAppError");
+    }
+  }
 
   return (
     <dialog id="game-over" className="modal modal-open">
@@ -144,6 +203,40 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
               );
             })}
           </div>
+
+          {latestAchievements && latestAchievements.length > 0 && (
+            <>
+              <div className="divider">Fresh Achievements</div>
+              <div className="flex w-full flex-col gap-2">
+                {latestAchievements.map((achievement) => (
+                  <AchievementItem
+                    key={`${achievement.kind}-${achievement.title}-${achievement.player_name}-${achievement.achieved_at_ms}`}
+                    achievement={achievement}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="divider">Share</div>
+          <section className="rounded border border-base-300 p-3">
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className="btn btn-sm"
+                onClick={shareToWhatsApp}
+                disabled={!shareSummary}
+              >
+                <BiLogoWhatsapp />
+              </button>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={copyShareSummary}
+                disabled={!shareSummary}
+              >
+                <BiCopy />
+              </button>
+            </div>
+          </section>
 
           <details className="mt-4">
             <summary className="cursor-pointer text-sm opacity-80">
@@ -211,5 +304,85 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
     </dialog>
   );
 };
+
+function buildShareSummary(
+  gameState: GameState,
+  stats: StatsSummary,
+  winnerIndex: number,
+  achievements: AchievementRecord[]
+): string {
+  const playerLines = stats.player_stats.map((stat, index) => {
+    const name = gameState.settings.players[index].name;
+    const verdict = getVerdict(stat, index === winnerIndex);
+    const icon = index === winnerIndex ? "🏆" : "🐸";
+    
+    return `${icon} ${name}: best run ${stat.longest_run} | banked ${stat.banked} | croaked ${stat.croaked} (${verdict.title})`;
+  });
+
+  const achievementLines = achievements.length > 0
+    ? [
+        "",
+        "🌟 Achievements:",
+        ...achievements.map((a) => `✨ ${a.player_name} - ${a.title}`)
+      ]
+    : [];
+
+  return [
+    "🐸 Can't Hop 🐸",
+    `🎲 ${stats.total_turns} rolls`,
+    "",
+    ...playerLines,
+    ...achievementLines
+  ].join("\n");
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "true");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textArea);
+
+  if (!copied) {
+    throw new Error("clipboard unavailable");
+  }
+}
+
+function AchievementItem({
+  achievement,
+}: {
+  achievement: AchievementRecord;
+}) {
+  return (
+    <section className="rounded border border-accent/40 bg-accent/10 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h4 className="font-bold">{achievement.title}</h4>
+          <p className="mt-1 text-sm opacity-85">{achievement.message}</p>
+        </div>
+        <time className="shrink-0 text-xs opacity-70">
+          {formatAchievementDate(achievement.achieved_at_ms)}
+        </time>
+      </div>
+    </section>
+  );
+}
+
+function formatAchievementDate(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(timestamp));
+}
 
 export default GameOverModal;

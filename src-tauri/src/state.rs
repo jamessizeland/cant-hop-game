@@ -1,9 +1,11 @@
+mod career;
 mod columns;
 mod game;
 mod logic;
 mod player;
 mod stats;
 
+pub use career::{CareerStats, CareerStatsMutex};
 pub use columns::Column;
 pub use game::{GameState, GameStateMutex};
 pub use logic::{calculate_croak_chance, evaluate_moves};
@@ -19,6 +21,7 @@ pub type ColumnID = usize;
 
 #[derive(Default)]
 pub struct AppContext {
+    pub career: CareerStatsMutex,
     pub game: GameStateMutex,
     pub hist: HistoryMutex,
 }

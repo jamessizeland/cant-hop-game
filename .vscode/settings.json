@@ -1,15 +1,12 @@
 {
-    "editor.formatOnSave": true,
-    "editor.formatOnSaveMode": "file",
-    "typescript.inlayHints.parameterNames.enabled": "all",
-    "typescript.inlayHints.variableTypes.enabled": true,
-    "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
-    "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
-    "typescript.inlayHints.enumMemberValues.enabled": true,
-    "javascript.validate.enable": false,
-    "javascript.format.enable": false,
-    "typescript.format.enable": false,
-    "files.associations": {
-        "*.css": "tailwindcss"
-    }
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "js/ts.inlayHints.parameterNames.enabled": "all",
+  "js/ts.inlayHints.variableTypes.enabled": true,
+  "js/ts.inlayHints.propertyDeclarationTypes.enabled": true,
+  "js/ts.inlayHints.functionLikeReturnTypes.enabled": true,
+  "js/ts.inlayHints.enumMemberValues.enabled": true,
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
 }

@@ -6,7 +6,7 @@ use std::{
 };
 
 /// The type of player
-#[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PlayerMode {
     #[default]
     /// A human player

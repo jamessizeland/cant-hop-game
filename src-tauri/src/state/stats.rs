@@ -18,7 +18,7 @@ pub type HistoryMutex = Mutex<History>;
 
 /// A player's total runs (gos) for this game. A 'run' is made up of multiple 'turns'
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct PlayerHistory(Vec<PlayerRun>);
+pub struct PlayerHistory(pub(crate) Vec<PlayerRun>);
 
 impl PlayerHistory {
     /// Register the start of a new turn for this player.

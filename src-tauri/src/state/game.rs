@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use tauri_plugin_store::Store;
 
 use super::{
-    columns::{generate_columns, Column},
-    player::{Player, PlayerMode, RunOutcome},
     SettingsState,
+    columns::{Column, generate_columns},
+    player::{Player, PlayerMode, RunOutcome},
 };
 
 pub type GameStateMutex = Mutex<GameState>;

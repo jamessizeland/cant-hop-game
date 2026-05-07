@@ -96,3 +96,62 @@ export type StatsSummary = {
   most_contested_column: number;
   total_turns: number;
 };
+
+export type AchievementKind =
+  | "ThreeHopHero"
+  | "StillStanding"
+  | "NoSplash"
+  | "LeapOfFaith"
+  | "CloseCall"
+  | "ColumnToppedMilestone"
+  | "FirstUp2"
+  | "FirstUp3"
+  | "FirstUp4"
+  | "FirstUp5"
+  | "FirstUp6"
+  | "FirstUp7"
+  | "FirstUp8"
+  | "FirstUp9"
+  | "FirstUp10"
+  | "FirstUp11"
+  | "FirstUp12"
+  | "Shutout"
+  | "SnatchedAtTheTop"
+  | "Bookends"
+  | "AgainstTheOdds"
+  | "CenterPerch"
+  | "HighWireWin"
+  | "FiveHopFlex"
+  | "SevenHopShowoff"
+  | "PerfectLanding"
+  | "ComebackCroaker"
+  | "Bankroll"
+  | "TripleCrown";
+
+export type AchievementRecord = {
+  kind: AchievementKind;
+  title: string;
+  message: string;
+  player_name: string;
+  achieved_at_ms: number;
+};
+
+export type PlayerCareerStats = {
+  player_name: string;
+  games_played: number;
+  wins: number;
+  croaks: number;
+  banks: number;
+  longest_successful_run: number;
+};
+
+export type CareerStats = {
+  games_played: number;
+  human_games_played: number;
+  total_croaks: number;
+  total_banks: number;
+  longest_successful_run: number;
+  columns_won_most_often: Record<string, number>;
+  player_totals: PlayerCareerStats[];
+  achievements: AchievementRecord[];
+};

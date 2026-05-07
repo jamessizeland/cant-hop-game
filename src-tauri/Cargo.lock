@@ -401,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "cant-hop"
-version = "0.5.7"
+version = "0.5.8"
 dependencies = [
  "anyhow",
  "futures-util",
