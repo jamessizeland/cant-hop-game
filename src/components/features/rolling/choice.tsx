@@ -2,6 +2,18 @@ import { AiAction } from "hooks/useAiTurn";
 import { motion } from "motion/react";
 import { DiceResult, PlayerChoice, PlayerColors, PlayerMode } from "types";
 
+const choicesVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (custom: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: custom * 0.1 + 0.5,
+      duration: 0.5,
+    },
+  }),
+};
+
 const ChoiceContainer: React.FC<{
   dice: DiceResult;
   playerIndex: number;
@@ -19,32 +31,18 @@ const ChoiceContainer: React.FC<{
   aiAction,
   aiTargetChoice,
 }) => {
-  const choicesVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (custom: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: custom * 0.1 + 0.5, // Adds a delay for the choices (delay after dice animation)
-        duration: 0.5,
-      },
-    }),
-  };
-
   // Define highlight style - adjust as needed
   const highlightStyle = {
-    borderColor: PlayerColors[playerIndex],
-    borderWidth: "4px",
-    borderStyle: "solid",
+    outline: `4px solid ${PlayerColors[playerIndex]}`,
+    outlineOffset: "2px",
   };
   const croakedHighlightStyle = {
-    borderColor: PlayerColors[playerIndex],
-    borderWidth: "4px",
-    borderStyle: "solid",
+    outline: `4px solid ${PlayerColors[playerIndex]}`,
+    outlineOffset: "2px",
   };
   return (
     <div
-      className="flex flex-row flex-wrap space-x-3 space-y-3 justify-center"
+      className="flex flex-row flex-wrap gap-3 justify-center"
       id="choice-container"
     >
       {dice.choices.length ? (

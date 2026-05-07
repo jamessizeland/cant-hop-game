@@ -19,7 +19,6 @@ export function GamePage() {
   }, []);
 
   useEffect(() => {
-    console.log("Game State Updated", gameState);
     if (!gameState) return;
     const current_player = gameState.current_player;
     setPlayerName(gameState.settings.players[current_player]?.name);

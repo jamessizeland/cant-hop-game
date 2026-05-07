@@ -50,4 +50,22 @@ const Bar: React.FC<BarProps> = ({
   );
 };
 
-export default Bar;
+function sameHops(prev: number[], next: number[]) {
+  return (
+    prev.length === next.length &&
+    prev.every((hop, index) => hop === next[index])
+  );
+}
+
+function sameBarProps(prev: BarProps, next: BarProps) {
+  return (
+    prev.value === next.value &&
+    prev.total === next.total &&
+    prev.risked === next.risked &&
+    prev.currentPlayer === next.currentPlayer &&
+    prev.winner === next.winner &&
+    sameHops(prev.hops, next.hops)
+  );
+}
+
+export default React.memo(Bar, sameBarProps);

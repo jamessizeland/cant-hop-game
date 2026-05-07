@@ -9,6 +9,21 @@ import {
 } from "react-icons/gi";
 import { PlayerColors } from "types";
 
+const diceVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.35, rotate: 70, y: -8 },
+  visible: (custom: number) => ({
+    opacity: 1,
+    scale: 1,
+    rotate: 0,
+    y: 0,
+    transition: {
+      delay: custom * 0.1,
+      duration: 0.4,
+      ease: "easeOut",
+    },
+  }),
+};
+
 /** Six sided dice */
 const D6: React.FC<{
   value: number;
@@ -38,20 +53,6 @@ const DiceContainer: React.FC<{ playerIndex: number; dice: number[] }> = ({
   playerIndex,
   dice,
 }) => {
-  const diceVariants: Variants = {
-    hidden: { opacity: 0, scale: 0.3, rotate: 45, filter: "blur(5px)" },
-    visible: (custom: number) => ({
-      opacity: 1,
-      scale: 1,
-      rotate: 0,
-      filter: "blur(0px)",
-      transition: {
-        delay: custom * 0.1, // Delay for staggered effect
-        duration: 0.4, // Longer duration for a more dramatic effect
-        ease: "easeOut",
-      },
-    }),
-  };
   return (
     <div className="flex space-x-3" id="dice-container">
       {dice.map((value, index) => (
