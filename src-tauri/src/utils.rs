@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context as _;
-use rand::{rngs::StdRng, seq::IndexedRandom as _, SeedableRng};
+use rand::{SeedableRng, rngs::StdRng, seq::IndexedRandom as _};
 use tauri::Wry;
 use tauri_plugin_store::{Store, StoreExt as _};
 

@@ -5,7 +5,8 @@ use rand::random;
 
 use crate::{
     state::{
-        evaluate_moves, AppContext, ColumnID, DiceResult, GameState, SettingsState, StatsSummary,
+        AppContext, CareerStats, ColumnID, DiceResult, GameState, SettingsState, StatsSummary,
+        evaluate_moves,
     },
     utils::{generate_name, get_store},
 };
@@ -15,9 +16,11 @@ use crate::{
 pub fn init_store(state: tauri::State<AppContext>, app: tauri::AppHandle) -> tauri::Result<()> {
     let mut game_state = state.game.lock().unwrap();
     let mut history = state.hist.lock().unwrap();
+    let mut career = state.career.lock().unwrap();
     let store = get_store(&app)?;
     game_state.update_from_store(&store);
     history.update_from_store(&store);
+    career.update_from_store(&store);
     Ok(())
 }
 
@@ -64,16 +67,44 @@ pub fn get_game_statistics(state: tauri::State<AppContext>) -> StatsSummary {
 }
 
 #[tauri::command]
+/// Return the persisted device-wide career statistics.
+pub fn get_career_statistics(
+    state: tauri::State<AppContext>,
+    app: tauri::AppHandle,
+) -> tauri::Result<CareerStats> {
+    let mut career = state.career.lock().unwrap();
+    let store = get_store(&app)?;
+    career.update_from_store(&store);
+    Ok(career.clone())
+}
+
+#[tauri::command]
+/// Clear earned achievement records while keeping ongoing career totals.
+pub fn reset_achievements(
+    state: tauri::State<AppContext>,
+    app: tauri::AppHandle,
+) -> tauri::Result<CareerStats> {
+    let mut career = state.career.lock().unwrap();
+    let store = get_store(&app)?;
+    career.update_from_store(&store);
+    career.reset_achievements();
+    career.write_to_store(&store)?;
+    Ok(career.clone())
+}
+
+#[tauri::command]
 /// Game over, reset the gamestate ready for a new game.
 pub fn stop_game(state: tauri::State<AppContext>, app: tauri::AppHandle) -> tauri::Result<()> {
     let mut game_state = state.game.lock().unwrap();
     let mut history = state.hist.lock().unwrap();
+    let career = state.career.lock().unwrap();
     game_state.clear();
     history.clear();
     {
         let store = get_store(&app)?;
         game_state.write_to_store(&store)?;
         history.write_to_store(&store)?;
+        career.write_to_store(&store)?;
     }
     println!("Game stopped!");
     Ok(())
@@ -161,6 +192,11 @@ pub fn end_run(
 
     game_state.next_player(outcome);
     history.next_player(outcome, game_state.get_unavailable());
+    if game_state.winner.is_some() {
+        let mut career = state.career.lock().unwrap();
+        career.record_completed_game(&game_state, &history);
+        career.write_to_store(&store)?;
+    }
     println!("{}", history);
     println!("{:?}", game_state);
 

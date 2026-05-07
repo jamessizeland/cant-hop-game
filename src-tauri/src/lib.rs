@@ -10,8 +10,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        // .plugin(tauri_plugin_process::init())
         .manage(state::AppContext::default())
         .setup(|_app| {
+            // #[cfg(desktop)]
+            // app.handle()
+            //     .plugin(tauri_plugin_updater::Builder::new().build())?;
+
             #[cfg(debug_assertions)] // only include this code on debug builds
             _app.get_webview_window("main").unwrap().open_devtools();
             Ok(())
@@ -26,6 +31,8 @@ pub fn run() {
             ipc::get_game_state,
             ipc::get_name,
             ipc::get_game_statistics,
+            ipc::get_career_statistics,
+            ipc::reset_achievements,
             ipc::ai::check_continue,
             ipc::ai::choose_column,
         ])
