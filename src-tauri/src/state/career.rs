@@ -54,6 +54,7 @@ pub enum AchievementKind {
     NoSplash,
     LeapOfFaith,
     CloseCall,
+    ColumnToppedMilestone,
     FirstUp2,
     FirstUp3,
     FirstUp4,
@@ -78,6 +79,8 @@ pub enum AchievementKind {
     Bankroll,
     TripleCrown,
 }
+
+const COLUMN_TOP_MILESTONES: [usize; 7] = [10, 25, 50, 100, 250, 500, 1000];
 
 impl CareerStats {
     pub fn update_from_store<R: tauri::Runtime>(&mut self, store: &Store<R>) {
@@ -131,6 +134,7 @@ impl CareerStats {
 
         let winner_id = game_state.winner.as_ref().map(|player| player.id);
         let mut new_achievements = Vec::new();
+        let previous_column_wins = self.columns_won_most_often.clone();
 
         for (index, player) in game_state.settings.players.iter().enumerate() {
             if !human_players.contains(&index) {
@@ -169,6 +173,7 @@ impl CareerStats {
                 game_state,
                 history,
                 summary,
+                &previous_column_wins,
                 achieved_at_ms,
             ));
         }
@@ -214,18 +219,19 @@ fn achievements_for_player(
     game_state: &GameState,
     history: &History,
     summary: &StatsSummary,
+    previous_column_wins: &HashMap<ColumnID, usize>,
     achieved_at_ms: u64,
 ) -> Vec<AchievementRecord> {
     let mut records = Vec::new();
     let risk = risk_profile(history, index);
     let name = &player.name;
 
-    if player_stats.longest_run >= 3 {
+    if player_stats.longest_run >= 6 {
         records.push(record(
             AchievementKind::ThreeHopHero,
-            "Three-Hop Hero",
+            "Six-Hop Hero",
             format!(
-                "{name} banked a run of {} hops. Stylish, tidy, slightly smug.",
+                "{name} banked a run of {} hops. Bold, tidy, slightly alarming.",
                 player_stats.longest_run
             ),
             name,
@@ -233,41 +239,37 @@ fn achievements_for_player(
         ));
     }
 
-    if risk.survived_high_risk {
+    if risk.survived_very_high_risk {
         records.push(record(
             AchievementKind::StillStanding,
             "Still Standing",
-            format!("{name} survived a scary roll and made the pond blink first."),
+            format!("{name} survived a very scary roll and made the pond blink first."),
             name,
             achieved_at_ms,
         ));
     }
 
-    if did_win && player_stats.croaked <= 1 {
+    if did_win && player_stats.croaked == 0 && player_stats.total_rolls >= 12 {
         records.push(record(
             AchievementKind::NoSplash,
             "No Splash",
-            format!(
-                "{name} won with only {} croak{}. Clean feet, loud scoreboard.",
-                player_stats.croaked,
-                if player_stats.croaked == 1 { "" } else { "s" }
-            ),
+            format!("{name} won a long game without croaking once. Clean feet, loud scoreboard."),
             name,
             achieved_at_ms,
         ));
     }
 
-    if did_win && player_stats.croaked == 0 {
+    if did_win && player_stats.croaked == 0 && player_stats.total_rolls >= 18 {
         records.push(record(
             AchievementKind::PerfectLanding,
             "Perfect Landing",
-            format!("{name} won without a single croak. Suspiciously dry."),
+            format!("{name} won a marathon without a single croak. Suspiciously dry."),
             name,
             achieved_at_ms,
         ));
     }
 
-    if did_win && risk.average_risk >= 0.25 {
+    if did_win && risk.average_risk >= 0.38 {
         records.push(record(
             AchievementKind::LeapOfFaith,
             "Leap of Faith",
@@ -277,7 +279,7 @@ fn achievements_for_player(
         ));
     }
 
-    if did_win && risk.average_risk >= 0.35 {
+    if did_win && risk.average_risk >= 0.45 {
         records.push(record(
             AchievementKind::HighWireWin,
             "High-Wire Win",
@@ -287,7 +289,7 @@ fn achievements_for_player(
         ));
     }
 
-    if !did_win && player_stats.luck >= 0.08 {
+    if !did_win && player_stats.luck >= 0.15 && player_stats.total_rolls >= 10 {
         records.push(record(
             AchievementKind::CloseCall,
             "Close Call",
@@ -298,12 +300,12 @@ fn achievements_for_player(
     }
 
     if did_win
-        && player_stats.luck <= -0.05
+        && player_stats.luck <= -0.1
         && summary
             .player_stats
             .iter()
             .enumerate()
-            .any(|(other_index, stats)| other_index != index && stats.luck >= 0.05)
+            .any(|(other_index, stats)| other_index != index && stats.luck >= 0.1)
     {
         records.push(record(
             AchievementKind::AgainstTheOdds,
@@ -315,6 +317,7 @@ fn achievements_for_player(
     }
 
     if did_win
+        && player_stats.total_rolls >= 10
         && game_state
             .settings
             .players
@@ -331,7 +334,7 @@ fn achievements_for_player(
         ));
     }
 
-    if did_win && player_stats.croaked >= 2 {
+    if did_win && player_stats.croaked >= 4 {
         records.push(record(
             AchievementKind::ComebackCroaker,
             "Comeback Croaker",
@@ -344,7 +347,7 @@ fn achievements_for_player(
         ));
     }
 
-    if player_stats.banked >= 5 {
+    if player_stats.banked >= 8 {
         records.push(record(
             AchievementKind::Bankroll,
             "Bankroll",
@@ -357,20 +360,20 @@ fn achievements_for_player(
         ));
     }
 
-    if did_win && player.won_cols.len() >= 3 {
+    if did_win && player.won_cols.len() >= 4 {
         records.push(record(
             AchievementKind::TripleCrown,
-            "Triple Crown",
-            format!("{name} sealed three columns in one game. The board had paperwork to file."),
+            "Four-Column Finish",
+            format!("{name} sealed four columns in one game. The board had paperwork to file."),
             name,
             achieved_at_ms,
         ));
     }
 
-    if player_stats.longest_run >= 5 {
+    if player_stats.longest_run >= 8 {
         records.push(record(
             AchievementKind::FiveHopFlex,
-            "Five-Hop Flex",
+            "Eight-Hop Flex",
             format!(
                 "{name} banked a {} hop run. Elegant. Unnecessary. Excellent.",
                 player_stats.longest_run
@@ -380,10 +383,10 @@ fn achievements_for_player(
         ));
     }
 
-    if player_stats.longest_run >= 7 {
+    if player_stats.longest_run >= 10 {
         records.push(record(
             AchievementKind::SevenHopShowoff,
-            "Seven-Hop Showoff",
+            "Ten-Hop Showoff",
             format!(
                 "{name} banked a {} hop run. At that point it becomes performance art.",
                 player_stats.longest_run
@@ -393,11 +396,11 @@ fn achievements_for_player(
         ));
     }
 
-    if player.won_cols.contains(&7) {
+    if did_win && player.won_cols.contains(&7) && player_stats.luck <= -0.08 {
         records.push(record(
             AchievementKind::CenterPerch,
             "Center Perch",
-            format!("{name} claimed column 7, the crowded middle seat of destiny."),
+            format!("{name} claimed column 7 while the dice were being difficult."),
             name,
             achieved_at_ms,
         ));
@@ -413,19 +416,12 @@ fn achievements_for_player(
         ));
     }
 
-    for column in &player.won_cols {
-        if let Some(kind) = first_up_kind(*column) {
-            records.push(record(
-                kind,
-                &format!("First Up {column}"),
-                format!(
-                    "{name} was first to the top of column {column}. Somebody had to make it look easy."
-                ),
-                name,
-                achieved_at_ms,
-            ));
-        }
-    }
+    records.extend(column_milestone_achievements(
+        player,
+        previous_column_wins,
+        game_state,
+        achieved_at_ms,
+    ));
 
     if beat_opponent_one_away(game_state, index) {
         records.push(record(
@@ -440,21 +436,43 @@ fn achievements_for_player(
     records
 }
 
-fn first_up_kind(column: ColumnID) -> Option<AchievementKind> {
-    match column {
-        2 => Some(AchievementKind::FirstUp2),
-        3 => Some(AchievementKind::FirstUp3),
-        4 => Some(AchievementKind::FirstUp4),
-        5 => Some(AchievementKind::FirstUp5),
-        6 => Some(AchievementKind::FirstUp6),
-        7 => Some(AchievementKind::FirstUp7),
-        8 => Some(AchievementKind::FirstUp8),
-        9 => Some(AchievementKind::FirstUp9),
-        10 => Some(AchievementKind::FirstUp10),
-        11 => Some(AchievementKind::FirstUp11),
-        12 => Some(AchievementKind::FirstUp12),
-        _ => None,
+fn column_milestone_achievements(
+    player: &Player,
+    previous_column_wins: &HashMap<ColumnID, usize>,
+    game_state: &GameState,
+    achieved_at_ms: u64,
+) -> Vec<AchievementRecord> {
+    let mut records = Vec::new();
+
+    for column in &player.won_cols {
+        let previous = previous_column_wins.get(column).copied().unwrap_or(0);
+        let current = game_state
+            .settings
+            .players
+            .iter()
+            .filter(|player| player.mode == PlayerMode::Human)
+            .flat_map(|player| player.won_cols.iter())
+            .filter(|won_column| *won_column == column)
+            .count()
+            + previous;
+
+        for milestone in COLUMN_TOP_MILESTONES {
+            if previous < milestone && current >= milestone {
+                records.push(record(
+                    AchievementKind::ColumnToppedMilestone,
+                    &format!("Column {column}: {milestone} Tops"),
+                    format!(
+                        "{} pushed the device-wide column {column} total to {milestone}. Persistence, but with hops.",
+                        player.name
+                    ),
+                    &player.name,
+                    achieved_at_ms,
+                ));
+            }
+        }
     }
+
+    records
 }
 
 fn beat_opponent_one_away(game_state: &GameState, player_index: usize) -> bool {
@@ -485,7 +503,7 @@ fn record(
 #[derive(Default)]
 struct RiskProfile {
     average_risk: f64,
-    survived_high_risk: bool,
+    survived_very_high_risk: bool,
 }
 
 fn risk_profile(history: &History, player_index: usize) -> RiskProfile {
@@ -495,15 +513,15 @@ fn risk_profile(history: &History, player_index: usize) -> RiskProfile {
 
     let mut total_risk = 0.0;
     let mut total_turns = 0;
-    let mut survived_high_risk = false;
+    let mut survived_very_high_risk = false;
 
     for run in &player_history.0 {
         for turn in &run.turns {
             let risk = calculate_croak_chance(&turn.active_cols, &run.inactive_cols);
             total_risk += risk;
             total_turns += 1;
-            if risk >= 0.35 && turn.outcome != super::player::RunOutcome::Croaked {
-                survived_high_risk = true;
+            if risk >= 0.5 && turn.outcome != super::player::RunOutcome::Croaked {
+                survived_very_high_risk = true;
             }
         }
     }
@@ -514,7 +532,7 @@ fn risk_profile(history: &History, player_index: usize) -> RiskProfile {
         } else {
             total_risk / total_turns as f64
         },
-        survived_high_risk,
+        survived_very_high_risk,
     }
 }
 
@@ -603,10 +621,6 @@ mod tests {
                 .iter()
                 .all(|record| record.player_name == "Ada")
         );
-        assert!(
-            achievements
-                .iter()
-                .any(|record| record.kind == AchievementKind::ThreeHopHero)
-        );
+        assert!(achievements.is_empty());
     }
 }

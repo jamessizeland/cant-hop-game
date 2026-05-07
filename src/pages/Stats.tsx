@@ -4,101 +4,122 @@ import { AchievementKind, CareerStats } from "@/types";
 import Modal from "@/components/elements/modal";
 
 const ACHIEVEMENT_CATALOG: {
+  id: string;
   kind: AchievementKind;
   title: string;
   description: string;
 }[] = [
   {
+    id: "ThreeHopHero",
     kind: "ThreeHopHero",
-    title: "Three-Hop Hero",
-    description: "Bank a run of 3 or more hops.",
+    title: "Six-Hop Hero",
+    description: "Bank a run of 6 or more hops.",
   },
   {
+    id: "StillStanding",
     kind: "StillStanding",
     title: "Still Standing",
-    description: "Survive a high-risk roll.",
+    description: "Survive a very high-risk roll.",
   },
   {
+    id: "NoSplash",
     kind: "NoSplash",
     title: "No Splash",
-    description: "Win with one croak or fewer.",
+    description: "Win a long game with zero croaks.",
   },
   {
+    id: "LeapOfFaith",
     kind: "LeapOfFaith",
     title: "Leap of Faith",
-    description: "Win after taking above-average risk.",
+    description: "Win after taking heavy average risk.",
   },
   {
+    id: "CloseCall",
     kind: "CloseCall",
     title: "Close Call",
-    description: "Lose despite statistically lucky rolls.",
+    description: "Lose a substantial game despite very lucky rolls.",
   },
   {
+    id: "Shutout",
     kind: "Shutout",
     title: "Clean Sweep",
-    description: "Win before any opponent scores a column.",
+    description: "Win a substantial game before any opponent scores a column.",
   },
   {
+    id: "SnatchedAtTheTop",
     kind: "SnatchedAtTheTop",
     title: "Snatched at the Top",
     description: "Win a column when an opponent is one hop away.",
   },
   {
+    id: "Bookends",
     kind: "Bookends",
     title: "Bookends",
     description: "Win both columns 2 and 12 in the same game.",
   },
   {
+    id: "AgainstTheOdds",
     kind: "AgainstTheOdds",
     title: "Against the Odds",
     description:
-      "Win with unlucky rolls while an opponent had statistically lucky rolls.",
+      "Win with very unlucky rolls while an opponent had very lucky rolls.",
   },
   {
+    id: "CenterPerch",
     kind: "CenterPerch",
     title: "Center Perch",
-    description: "Win column 7.",
+    description: "Win column 7 despite unlucky rolls.",
   },
   {
+    id: "HighWireWin",
     kind: "HighWireWin",
     title: "High-Wire Win",
     description: "Win while carrying very high average risk.",
   },
   {
+    id: "FiveHopFlex",
     kind: "FiveHopFlex",
-    title: "Five-Hop Flex",
-    description: "Bank a run of 5 or more hops.",
+    title: "Eight-Hop Flex",
+    description: "Bank a run of 8 or more hops.",
   },
   {
+    id: "SevenHopShowoff",
     kind: "SevenHopShowoff",
-    title: "Seven-Hop Showoff",
-    description: "Bank a run of 7 or more hops.",
+    title: "Ten-Hop Showoff",
+    description: "Bank a run of 10 or more hops.",
   },
   {
+    id: "PerfectLanding",
     kind: "PerfectLanding",
     title: "Perfect Landing",
-    description: "Win without croaking once.",
+    description: "Win a marathon without croaking once.",
   },
   {
+    id: "ComebackCroaker",
     kind: "ComebackCroaker",
     title: "Comeback Croaker",
-    description: "Win after croaking at least twice.",
+    description: "Win after croaking at least 4 times.",
   },
   {
+    id: "Bankroll",
     kind: "Bankroll",
     title: "Bankroll",
-    description: "Bank at least 5 runs in one game.",
+    description: "Bank at least 8 runs in one game.",
   },
   {
+    id: "TripleCrown",
     kind: "TripleCrown",
-    title: "Triple Crown",
-    description: "Win 3 or more columns in one game.",
+    title: "Four-Column Finish",
+    description: "Win 4 or more columns in one game.",
   },
-  ...([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const).map((column) => ({
-    kind: `FirstUp${column}` as AchievementKind,
-    title: `First Up ${column}`,
-    description: `Be first to the top of column ${column}.`,
-  })),
+  ...([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const).flatMap((column) =>
+    ([10, 25, 50, 100, 250, 500, 1000] as const).map((milestone) => ({
+      id: `Column ${column}: ${milestone} Tops`,
+      kind: "ColumnToppedMilestone" as AchievementKind,
+      title: `Column ${column}: ${milestone} Tops`,
+      description: `Top column ${column} ${milestone} times across this device.`,
+    }))
+  ),
 ];
 
 export function StatsPage() {
@@ -118,8 +139,8 @@ export function StatsPage() {
   }, [stats]);
 
   const achievements = stats?.achievements.slice().reverse() ?? [];
-  const earnedAchievementKinds = new Set(
-    stats?.achievements.map((achievement) => achievement.kind) ?? []
+  const earnedAchievementIds = new Set(
+    stats?.achievements.map(achievementId) ?? []
   );
 
   function handleResetAchievements() {
@@ -229,7 +250,7 @@ export function StatsPage() {
                 {achievements.length > 0 ? (
                   achievements.map((achievement) => (
                     <article
-                      key={`${achievement.kind}-${achievement.player_name}-${achievement.achieved_at_ms}`}
+                      key={`${achievementId(achievement)}-${achievement.player_name}-${achievement.achieved_at_ms}`}
                       className="rounded border border-accent/40 bg-accent/10 p-3"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -260,11 +281,11 @@ export function StatsPage() {
               <h2 className="text-xl font-bold">Available Achievements</h2>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {ACHIEVEMENT_CATALOG.map((achievement) => {
-                  const earned = earnedAchievementKinds.has(achievement.kind);
+                  const earned = earnedAchievementIds.has(achievement.id);
 
                   return (
                     <article
-                      key={achievement.kind}
+                      key={achievement.id}
                       className="rounded border border-base-300 p-3"
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -317,6 +338,15 @@ function formatDate(timestamp: number) {
     month: "short",
     year: "numeric",
   }).format(new Date(timestamp));
+}
+
+function achievementId(achievement: {
+  kind: AchievementKind;
+  title: string;
+}) {
+  return achievement.kind === "ColumnToppedMilestone"
+    ? achievement.title
+    : achievement.kind;
 }
 
 function ConfirmationDialog({

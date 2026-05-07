@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
-import { 
-  getCareerStatistics, 
-  getGameStatistics, 
-  startGame, 
-  stopGame 
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { notifyError, notifySuccess } from "@/services/notifications";
+import {
+  getCareerStatistics,
+  getGameStatistics,
+  startGame,
+  stopGame,
 } from "@/services/ipc";
-import { 
-  AchievementRecord, 
-  CareerStats, 
-  GameState, 
-  PlayerColors, 
-  PlayerStats, 
-  StatsSummary
+import {
+  AchievementRecord,
+  CareerStats,
+  GameState,
+  PlayerColors,
+  PlayerStats,
+  StatsSummary,
 } from "@/types";
+import { BiCopy, BiLogoWhatsapp } from "react-icons/bi";
 
 type GameOverModalProps = {
   gameState: GameState;
@@ -114,6 +117,33 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
         )
     )
     .reverse();
+  const shareSummary = stats
+    ? buildShareSummary(
+        gameState,
+        stats,
+        safeWinnerIndex,
+        latestAchievements ?? []
+      )
+    : "";
+
+  async function copyShareSummary() {
+    if (!shareSummary) return;
+    try {
+      await copyText(shareSummary);
+      notifySuccess("Game summary copied", "ShareSummaryCopied");
+    } catch (error) {
+      notifyError(`Failed to copy summary: ${error}`, "ShareSummaryCopyError");
+    }
+  }
+
+  async function shareToWhatsApp() {
+    if (!shareSummary) return;
+    try {
+      await openUrl(`https://wa.me/?text=${encodeURIComponent(shareSummary)}`);
+    } catch (error) {
+      notifyError(`Failed to open WhatsApp: ${error}`, "ShareWhatsAppError");
+    }
+  }
 
   return (
     <dialog id="game-over" className="modal modal-open">
@@ -180,13 +210,33 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
               <div className="flex w-full flex-col gap-2">
                 {latestAchievements.map((achievement) => (
                   <AchievementItem
-                    key={`${achievement.kind}-${achievement.player_name}-${achievement.achieved_at_ms}`}
+                    key={`${achievement.kind}-${achievement.title}-${achievement.player_name}-${achievement.achieved_at_ms}`}
                     achievement={achievement}
                   />
                 ))}
               </div>
             </>
           )}
+
+          <div className="divider">Share</div>
+          <section className="rounded border border-base-300 p-3">
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className="btn btn-sm"
+                onClick={shareToWhatsApp}
+                disabled={!shareSummary}
+              >
+                <BiLogoWhatsapp />
+              </button>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={copyShareSummary}
+                disabled={!shareSummary}
+              >
+                <BiCopy />
+              </button>
+            </div>
+          </section>
 
           <details className="mt-4">
             <summary className="cursor-pointer text-sm opacity-80">
@@ -254,6 +304,58 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
     </dialog>
   );
 };
+
+function buildShareSummary(
+  gameState: GameState,
+  stats: StatsSummary,
+  winnerIndex: number,
+  achievements: AchievementRecord[]
+): string {
+  const playerLines = stats.player_stats.map((stat, index) => {
+    const name = gameState.settings.players[index].name;
+    const verdict = getVerdict(stat, index === winnerIndex);
+    const icon = index === winnerIndex ? "🏆" : "🐸";
+    
+    return `${icon} ${name}: best run ${stat.longest_run} | banked ${stat.banked} | croaked ${stat.croaked} (${verdict.title})`;
+  });
+
+  const achievementLines = achievements.length > 0
+    ? [
+        "",
+        "🌟 Achievements:",
+        ...achievements.map((a) => `✨ ${a.player_name} - ${a.title}`)
+      ]
+    : [];
+
+  return [
+    "🐸 Can't Hop 🐸",
+    `🎲 ${stats.total_turns} rolls`,
+    "",
+    ...playerLines,
+    ...achievementLines
+  ].join("\n");
+}
+
+async function copyText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "true");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textArea);
+
+  if (!copied) {
+    throw new Error("clipboard unavailable");
+  }
+}
 
 function AchievementItem({
   achievement,

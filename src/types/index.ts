@@ -103,6 +103,7 @@ export type AchievementKind =
   | "NoSplash"
   | "LeapOfFaith"
   | "CloseCall"
+  | "ColumnToppedMilestone"
   | "FirstUp2"
   | "FirstUp3"
   | "FirstUp4"
