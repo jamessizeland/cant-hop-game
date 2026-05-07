@@ -1,6 +1,6 @@
-import Bar from "components/elements/bar";
+import Bar from "@/components/elements/bar";
 import React from "react";
-import { GameState } from "types";
+import { GameState } from "@/types";
 
 type BoardProps = {
   gameState: GameState;

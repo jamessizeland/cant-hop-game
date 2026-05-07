@@ -1,6 +1,6 @@
-import { AiAction } from "hooks/useAiTurn";
+import { AiAction } from "@/hooks/useAiTurn";
 import { motion } from "motion/react";
-import { PlayerColors, PlayerMode } from "types";
+import { PlayerColors, PlayerMode } from "@/types";
 
 function transparentHex(hex: string, alpha: string) {
   return `${hex}${alpha}`;

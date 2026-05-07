@@ -1,6 +1,6 @@
-import { AiAction } from "hooks/useAiTurn";
+import { AiAction } from "@/hooks/useAiTurn";
 import { motion } from "motion/react";
-import { DiceResult, PlayerChoice, PlayerColors, PlayerMode } from "types";
+import { DiceResult, PlayerChoice, PlayerColors, PlayerMode } from "@/types";
 
 const choicesVariants = {
   hidden: { opacity: 0, y: 20 },

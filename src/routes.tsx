@@ -1,6 +1,6 @@
 import { Routes, Route, useLocation } from "react-router-dom";
-import { SplashPage, GamePage, StatsPage, SettingsPage } from "pages";
-import { checkEnv } from "utils";
+import { SplashPage, GamePage, StatsPage, SettingsPage } from "@/pages";
+import { checkEnv } from "@/utils";
 import { MdDataExploration, MdGames, MdSettings } from "react-icons/md";
 import { AnimatePresence, motion } from "motion/react";
 

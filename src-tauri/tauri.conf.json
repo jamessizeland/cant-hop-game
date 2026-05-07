@@ -22,6 +22,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/frog.svg",
@@ -61,5 +62,16 @@
       "icons/ios/AppIcon-83.5x83.5@2x.png",
       "icons/ios/AppIcon-512@2x.png"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM2OUUwNzY5ODc2NjlEQ0UKUldUT25XYUhhUWVlTmhCc2hvc3k5QUJiTy9wTmMvcFhyWnQ5NFlGRWcyMmN0ZllpeXMzcTlQdWkK",
+      "endpoints": [
+        "https://github.com/jamessizeland/cant-hop-game/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

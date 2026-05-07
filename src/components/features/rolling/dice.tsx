@@ -7,7 +7,7 @@ import {
   GiDiceSixFacesThree,
   GiDiceSixFacesTwo,
 } from "react-icons/gi";
-import { PlayerColors } from "types";
+import { PlayerColors } from "@/types";
 
 const diceVariants: Variants = {
   hidden: { opacity: 0, scale: 0.35, rotate: 70, y: -8 },
