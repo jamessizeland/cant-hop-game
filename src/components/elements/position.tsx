@@ -1,6 +1,6 @@
 import LilyPad from "./lilypad";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { PlayerColors } from "types";
 import { GiFrog2, GiFrogFoot2, GiFrogPrince2 } from "./icons";
 
@@ -15,25 +15,49 @@ export type PositionProps = {
   won: boolean;
 };
 
+const frogPositions = [
+  [],
+  [
+    {
+      top: "50%",
+      left: "50%",
+      fontSize: "clamp(1rem, 9vw, 2rem)",
+    },
+  ],
+  [
+    { top: "40%", left: "30%", fontSize: "clamp(0.9rem, 8vw, 1.8rem)" },
+    { top: "60%", left: "60%", fontSize: "clamp(0.9rem, 8vw, 1.8rem)" },
+  ],
+  [
+    { top: "30%", left: "50%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
+    { top: "65%", left: "30%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
+    { top: "65%", left: "70%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
+  ],
+  [
+    { top: "30%", left: "30%", fontSize: "1.3rem" },
+    { top: "70%", left: "70%", fontSize: "1.3rem" },
+    { top: "30%", left: "70%", fontSize: "1.3rem" },
+    { top: "70%", left: "30%", fontSize: "1.3rem" },
+  ],
+];
+
+const numberOfRings = 3;
+const ringDelay = 0.3;
+const ringDuration = 1;
+
 const PositionMarker = (props: PositionProps) => {
-  // Generate random initial rotation between -10 and 10 degrees.
   const initialRotation = useMemo(() => Math.random() * 360, []);
 
   return (
     <div className="relative w-[9vw] h-[9vw] max-w-8 max-h-8 flex items-center justify-center">
-      {/* Render LilyPad first so it's naturally behind FrogPositioning */}
       <div
-        className="absolute inset-0 z-0" // Position absolutely to fill parent, base z-index
+        className="absolute inset-0 z-0"
         style={{
           rotate: `${initialRotation}deg`,
         }}
       >
-        {/* Ensure LilyPad fills its motion container */}
         <LilyPad className="w-full h-full" />
       </div>
-
-      {/* FrogPositioning is rendered on top of the LilyPad */}
-      {/* It needs to be absolutely positioned to overlay correctly */}
       <div className="absolute inset-0">
         <FrogPositioning {...props} />
       </div>
@@ -41,7 +65,19 @@ const PositionMarker = (props: PositionProps) => {
   );
 };
 
-export default PositionMarker;
+function samePositionProps(prev: PositionProps, next: PositionProps) {
+  return (
+    prev.currentPlayer === next.currentPlayer &&
+    prev.player1 === next.player1 &&
+    prev.player2 === next.player2 &&
+    prev.player3 === next.player3 &&
+    prev.player4 === next.player4 &&
+    prev.risker === next.risker &&
+    prev.won === next.won
+  );
+}
+
+export default memo(PositionMarker, samePositionProps);
 
 /** Position the frogs within the div.  If there is one frog, place it in the center, if there are more, arrange them. */
 const FrogPositioning = ({
@@ -59,54 +95,11 @@ const FrogPositioning = ({
         .map((frog, index) => {
           return frog ? index : undefined;
         })
-        .filter((frog) => frog !== undefined),
+        .filter((frog): frog is number => frog !== undefined),
     [player1, player2, player3, player4]
   );
   const count = frogs.length;
-
-  const frogPositions1 = [
-    {
-      top: "50%",
-      left: "50%",
-      fontSize: "clamp(1rem, 9vw, 2rem)",
-    },
-  ];
-  const frogPositions2 = [
-    { top: "40%", left: "30%", fontSize: "clamp(0.9rem, 8vw, 1.8rem)" },
-    { top: "60%", left: "60%", fontSize: "clamp(0.9rem, 8vw, 1.8rem)" },
-  ];
-  const frogPositions3 = [
-    { top: "30%", left: "50%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
-    { top: "65%", left: "30%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
-    { top: "65%", left: "70%", fontSize: "clamp(0.8rem, 7vw, 1.6rem)" },
-  ];
-  const frogPositions4 = [
-    { top: "30%", left: "30%", fontSize: "1.3rem" },
-    { top: "70%", left: "70%", fontSize: "1.3rem" },
-    { top: "30%", left: "70%", fontSize: "1.3rem" },
-    { top: "70%", left: "30%", fontSize: "1.3rem" },
-  ];
-
-  const frogPositions = useMemo(() => {
-    switch (count) {
-      case 1:
-        return frogPositions1;
-      case 2:
-        return frogPositions2;
-      case 3:
-        return frogPositions3;
-      case 4:
-        return frogPositions4;
-      default:
-        return [];
-    }
-  }, [count]);
-
-  // --- Configuration for Concentric Rings ---
-  const numberOfRings = 3; // How many rings to show
-  const ringDelay = 0.3; // Delay (in seconds) between each ring starting
-  const ringDuration = 1; // Duration of each ring's animation
-  // --- End Configuration ---
+  const positions = frogPositions[count] ?? [];
 
   return (
     <div className="absolute inset-0 w-full h-full">
@@ -128,9 +121,9 @@ const FrogPositioning = ({
             className={`absolute z-10`}
             style={{
               color: PlayerColors[frogIndex],
-              top: frogPositions[arrayIndex]?.top ?? "50%",
-              left: frogPositions[arrayIndex]?.left ?? "50%",
-              fontSize: frogPositions[arrayIndex]?.fontSize ?? "1.5rem",
+              top: positions[arrayIndex]?.top ?? "50%",
+              left: positions[arrayIndex]?.left ?? "50%",
+              fontSize: positions[arrayIndex]?.fontSize ?? "1.5rem",
               transform: "translate(-50%, -50%)",
             }}
           />
@@ -147,45 +140,44 @@ const FrogPositioning = ({
                 style={{
                   top: "50%",
                   left: "50%",
-                  borderWidth: "2px", // Increased border width for definition
-                  borderColor: "rgba(17, 216, 230, 0.8)", // Kept color opaque
-                  width: "60px", // Use base size variable
-                  height: "60px", // Use base size variable
-                  transform: "translate(-50%, -50%)", // Center precisely
+                  borderWidth: "2px",
+                  borderColor: "rgba(17, 216, 230, 0.8)",
+                  width: "60px",
+                  height: "60px",
                 }}
                 initial={{
-                  width: "10px",
-                  height: "10px",
+                  x: "-50%",
+                  y: "-50%",
+                  scale: 0.2,
                   opacity: 1 - index * 0.4,
                 }}
-                animate={{ width: "100px", height: "100px", opacity: 0 }}
+                animate={{ x: "-50%", y: "-50%", scale: 1.8, opacity: 0 }}
                 transition={{
-                  delay: index * ringDelay, // Stagger the start time
+                  delay: index * ringDelay,
                   duration: ringDuration,
-                  ease: "easeOut", // Standard ease out
+                  ease: "easeOut",
                 }}
               />
             ))}
-            {/* Frog Foot used to indicate a risked position. */}
             <motion.div
-              key="frog-foot" // Need a consistent key for AnimatePresence
-              className="absolute z-20" // Foot on top
+              key="frog-foot"
+              className="absolute z-20"
               style={{
                 top: "50%",
                 left: "50%",
               }}
-              initial={{ y: "-70%", x: "-50%", scale: 0.5, opacity: 0 }} // Start above, small, and invisible
+              initial={{ y: "-70%", x: "-50%", scale: 0.5, opacity: 0 }}
               animate={{
-                y: "-50%", // Move down to center vertically
-                x: "-50%", // Keep centered horizontally
-                scale: 1, // Scale up to full size
-                opacity: 1, // Fade in
+                y: "-50%",
+                x: "-50%",
+                scale: 1,
+                opacity: 1,
                 transition: { duration: 0.1, ease: "easeOut" },
               }}
               exit={{
-                y: "-100%", // Move further up
-                scale: 0.3, // Shrink slightly
-                opacity: 0, // Fade out
+                y: "-100%",
+                scale: 0.3,
+                opacity: 0,
                 transition: { duration: 0.1, ease: "easeIn" },
               }}
             >

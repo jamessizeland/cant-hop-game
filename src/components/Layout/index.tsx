@@ -1,8 +1,5 @@
 import { ReactNode } from "react";
 import { ToastContainer } from "react-toastify";
-import { checkEnv } from "utils";
-
-console.log(checkEnv());
 
 /** This component is responsible for common elements of the app */
 export function Layout({ children }: { children: ReactNode }) {

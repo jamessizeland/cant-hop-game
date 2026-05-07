@@ -49,16 +49,6 @@ export const useAiTurn = ({
 
   // Effect for AI deciding Hop/Stop
   useEffect(() => {
-    // --- DEBUG LOG 1 ---
-    console.log(
-      "[AI Effect 1 Triggered] Deps:",
-      `Mode: ${player.mode}`,
-      `Dice Len: ${dice.dice.length}`,
-      `Acting: ${isAiActing}`,
-      `Hops: ${gameState.hops}`,
-      `Tour: ${isTourOpen}`
-    );
-
     if (
       player.mode !== "Human" &&
       dice.dice.length === 0 &&
@@ -66,9 +56,6 @@ export const useAiTurn = ({
       gameState.hops >= 0 &&
       !isTourOpen
     ) {
-      // --- DEBUG LOG 2 ---
-      console.log("[AI Effect 1] Condition Met. Setting isAiActing=true.");
-
       isProcessingRef.current = true; // Mark as processing *before* async operations/timeouts
       setIsAiActing(true); // Signal that AI is now busy (causes re-render)
 
@@ -77,9 +64,6 @@ export const useAiTurn = ({
 
       //   notifyInfo(`AI (${player.name}) thinking...`, "ai");
       decisionTimerRef.current = setTimeout(async () => {
-        // --- DEBUG LOG 3 ---
-        console.log("[AI Effect 1] Decision Timeout Executing...");
-
         try {
           const isContinue = await aiCheckContinue();
           setAiAction(isContinue ? "hop" : "stop");
@@ -134,15 +118,6 @@ export const useAiTurn = ({
 
   // Effect for AI making a choice or handling "Croaked"
   useEffect(() => {
-    // --- DEBUG LOG ---
-    console.log(
-      "[AI Effect 2 Triggered] Deps:",
-      `Mode: ${player.mode}`,
-      `Dice Len: ${dice.dice.length}`,
-      `Acting: ${isAiActing}`, // This effect *should* run when isAiActing is true and dice are present
-      `Tour: ${isTourOpen}`
-    );
-
     if (
       player.mode !== "Human" &&
       dice.dice.length > 0 &&
@@ -151,9 +126,6 @@ export const useAiTurn = ({
     ) {
       const decisionDelay = 500;
       const actionDelay = 750;
-
-      // --- DEBUG LOG ---
-      console.log("[AI Effect 2] Condition Met. Setting decision timeout.");
 
       decisionTimerRef.current = setTimeout(async () => {
         try {

@@ -2,6 +2,29 @@ import { AiAction } from "hooks/useAiTurn";
 import { motion } from "motion/react";
 import { PlayerColors, PlayerMode } from "types";
 
+function transparentHex(hex: string, alpha: string) {
+  return `${hex}${alpha}`;
+}
+
+function AiButtonHighlight({ color }: { color: string }) {
+  return (
+    <span aria-hidden="true" className="pointer-events-none absolute inset-0">
+      <span
+        className="absolute inset-0 rounded-[inherit]"
+        style={{
+          backgroundColor: transparentHex(color, "24"),
+        }}
+      />
+      <span
+        className="absolute inset-[3px] rounded-[inherit]"
+        style={{
+          boxShadow: `inset 0 0 0 2px ${color}`,
+        }}
+      />
+    </span>
+  );
+}
+
 const TurnStartContainer: React.FC<{
   playerIndex: number;
   mode: PlayerMode;
@@ -10,12 +33,7 @@ const TurnStartContainer: React.FC<{
   updateDice: () => Promise<void>;
   endPlayerRun: (forced: boolean) => Promise<void>;
 }> = ({ playerIndex, mode, hops, aiAction, updateDice, endPlayerRun }) => {
-  // Define highlight style - adjust border color/width or use Tailwind classes (e.g., ring-4 ring-blue-500)
-  const highlightStyle = {
-    borderColor: PlayerColors[playerIndex],
-    borderWidth: "4px",
-    borderStyle: "solid",
-  };
+  const highlightColor = PlayerColors[playerIndex];
 
   return (
     <div
@@ -36,11 +54,12 @@ const TurnStartContainer: React.FC<{
           repeatDelay: 5,
           delay: 8,
         }}
-        // Apply base classes and conditional highlight style
-        className="btn btn-xl text-black disabled:opacity-80 bg-green-400"
-        style={mode !== "Human" && aiAction === "hop" ? highlightStyle : {}}
+        className="btn btn-xl relative overflow-hidden text-black disabled:opacity-80 bg-green-400"
       >
-        Hop
+        {mode !== "Human" && aiAction === "hop" && (
+          <AiButtonHighlight color={highlightColor} />
+        )}
+        <span className="relative z-10">Hop</span>
       </motion.button>
       {hops > 0 && (
         <motion.button
@@ -53,11 +72,12 @@ const TurnStartContainer: React.FC<{
           animate={{ scale: 1 }}
           exit={{ scale: 0 }}
           transition={{ duration: 0.1 }}
-          // Apply base classes and conditional highlight style
-          className="btn btn-xl text-black disabled:opacity-80 bg-green-400"
-          style={mode !== "Human" && aiAction === "stop" ? highlightStyle : {}}
+          className="btn btn-xl relative overflow-hidden text-black disabled:opacity-80 bg-green-400"
         >
-          Stop
+          {mode !== "Human" && aiAction === "stop" && (
+            <AiButtonHighlight color={highlightColor} />
+          )}
+          <span className="relative z-10">Stop</span>
         </motion.button>
       )}
     </div>

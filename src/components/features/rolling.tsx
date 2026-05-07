@@ -48,7 +48,6 @@ const DiceRoller: React.FC<RollerProps> = ({ setGameState, gameState }) => {
       const state = await chooseColumns(choice);
       setDice({ dice: [], choices: [] });
       if (state) {
-        console.log("updating choices");
         setGameState(state);
         if (isTourOpen && currentStep === 3) {
           setCurrentStep(currentStep + 1);
