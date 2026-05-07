@@ -1,5 +1,5 @@
 import { MdClose } from "react-icons/md";
-import { PlayerColors } from "types";
+import { PlayerColors } from "@/types";
 
 const TopBar = ({
   playerName,

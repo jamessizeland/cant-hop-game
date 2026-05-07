@@ -1,7 +1,7 @@
 import LilyPad from "./lilypad";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useMemo } from "react";
-import { PlayerColors } from "types";
+import { PlayerColors } from "@/types";
 import { GiFrog2, GiFrogFoot2, GiFrogPrince2 } from "./icons";
 
 /** Details of which players are present at this position */

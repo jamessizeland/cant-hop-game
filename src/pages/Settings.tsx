@@ -1,8 +1,8 @@
 /** Settings for the game.  This page is loaded once before a game starts to determine rules and player count. */
 
-import PlayerForm from "components/elements/form";
+import PlayerForm from "@/components/elements/form";
 import { useEffect, useState } from "react";
-import { getGameState, getName } from "services/ipc";
+import { getGameState, getName } from "@/services/ipc";
 
 export function SettingsPage() {
   const [resume, setResume] = useState(false);

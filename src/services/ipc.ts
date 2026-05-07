@@ -5,7 +5,7 @@ import {
   PlayerChoice,
   SettingsState,
   StatsSummary,
-} from "types";
+} from "@/types";
 import { notifyError } from "./notifications";
 
 export async function initStore(): Promise<void> {
