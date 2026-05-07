@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/android-schema.json",
+  "identifier": "android-apk-installer",
+  "description": "APK installer permissions for Android GitHub release builds",
+  "windows": ["main"],
+  "platforms": ["android"],
+  "permissions": ["apk-installer:default"]
+}

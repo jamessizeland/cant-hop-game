@@ -13,10 +13,13 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_apk_installer::init())
         .manage(state::AppContext::default())
         .setup(|_app| {
+            #[cfg(desktop)]
+            _app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())?;
+
             #[cfg(debug_assertions)] // only include this code on debug builds
             _app.get_webview_window("main").unwrap().open_devtools();
             Ok(())
