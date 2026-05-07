@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
   DiceResult,
+  CareerStats,
   GameState,
   PlayerChoice,
   SettingsState,
@@ -87,6 +88,16 @@ export async function getGameState(): Promise<GameState> {
 /** Return the end of game statistics. */
 export async function getGameStatistics(): Promise<StatsSummary> {
   return await invoke<StatsSummary>("get_game_statistics");
+}
+
+/** Return persisted device-wide career statistics. */
+export async function getCareerStatistics(): Promise<CareerStats> {
+  return await invoke<CareerStats>("get_career_statistics");
+}
+
+/** Clear earned achievements while preserving career totals. */
+export async function resetAchievements(): Promise<CareerStats> {
+  return await invoke<CareerStats>("reset_achievements");
 }
 
 /** Generate a random name, can be seeded for reproducibility.
