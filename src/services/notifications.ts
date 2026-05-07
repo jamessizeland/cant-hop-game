@@ -67,6 +67,22 @@ export const notifyInfo = (
   return toastConfig.toastId;
 };
 
+export const notifyClickableInfo = (
+  message: string,
+  onClick: () => void,
+  id?: string,
+  timeout: false | number = false
+): string => {
+  toastConfig.autoClose = timeout;
+  toastConfig.toastId = id ? id : Date.now().toString(16);
+  toast.info(message, {
+    ...toastConfig,
+    closeOnClick: true,
+    onClick,
+  });
+  return toastConfig.toastId;
+};
+
 export const notifySuspense = (
   message: string,
   id?: string,

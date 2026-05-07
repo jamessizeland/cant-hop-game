@@ -1,6 +1,7 @@
 #[cfg(debug_assertions)] // only include this code on debug builds
 use tauri::Manager;
 
+mod download;
 mod ipc;
 mod state;
 mod utils;
@@ -12,14 +13,15 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_apk_installer::init())
         .manage(state::AppContext::default())
-        .setup(|app| {
+        .setup(|_app| {
             #[cfg(desktop)]
-            app.handle()
+            _app.handle()
                 .plugin(tauri_plugin_updater::Builder::new().build())?;
 
             #[cfg(debug_assertions)] // only include this code on debug builds
-            app.get_webview_window("main").unwrap().open_devtools();
+            _app.get_webview_window("main").unwrap().open_devtools();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -34,6 +36,7 @@ pub fn run() {
             ipc::get_game_statistics,
             ipc::get_career_statistics,
             ipc::reset_achievements,
+            download::download_file,
             ipc::ai::check_continue,
             ipc::ai::choose_column,
         ])

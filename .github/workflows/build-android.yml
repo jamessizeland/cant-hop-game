@@ -13,11 +13,10 @@ env:
 
 jobs:
   publish-android:
-    if: ${{ github.event.pull_request.merged }} && github.repository_owner == 'jamessizeland' # This is to ensure that only the owner can publish the app.
+    # This is to ensure that only the owner can publish the app.
+    if: ${{ github.event.pull_request.merged && github.repository_owner == 'jamessizeland' }} 
     permissions:
       contents: write
-    strategy:
-      fail-fast: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +25,20 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: "zulu"
           java-version: "17"
+          cache: "gradle"
 
       - name: Cache NDK
         id: cache-ndk
@@ -46,6 +54,7 @@ jobs:
           cmdline-tools-version: 12266719 # v16
 
       - name: Install NDK
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
         run: sdkmanager "ndk;27.0.11902837"
 
       - name: install Rust stable
@@ -55,6 +64,11 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+          key: android
+          cache-on-failure: true
 
       - name: setup Android signing
         run: |
@@ -67,10 +81,10 @@ jobs:
           cd ../../.. # Go back to root
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Build app bundle
-        run: bun tauri android build -v
+        run: bun tauri android build --apk --split-per-abi -v
         env:
           NDK_HOME: /usr/local/lib/android/sdk/ndk/27.0.11902837
 
@@ -107,7 +121,24 @@ jobs:
 
       - name: Rename APK file
         run: |
-          mv ./src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk ./src-tauri/gen/android/app/build/outputs/apk/universal/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}.apk
+          VERSION="${{ steps.app-version.outputs.version_string }}"
+          declare -A APK_OUTPUTS=(
+            [arm64]="android-arm64"
+            [arm]="android-arm"
+            [x86]="android-x86"
+            [x86_64]="android-x86_64"
+          )
+
+          for ABI in "${!APK_OUTPUTS[@]}"; do
+            SRC="./src-tauri/gen/android/app/build/outputs/apk/${ABI}/release/app-${ABI}-release.apk"
+            DEST="./src-tauri/gen/android/app/build/outputs/apk/${ABI}/release/${{ env.APP_NAME }}-${VERSION}-${APK_OUTPUTS[$ABI]}.apk"
+            if [ -f "$SRC" ]; then
+              mv "$SRC" "$DEST"
+            else
+              echo "Expected APK not found: $SRC"
+              exit 1
+            fi
+          done
 
       - name: Publish
         uses: softprops/action-gh-release@v1
@@ -118,4 +149,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ./src-tauri/gen/android/app/build/outputs/apk/universal/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}.apk
+            ./src-tauri/gen/android/app/build/outputs/apk/arm64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm64.apk
+            ./src-tauri/gen/android/app/build/outputs/apk/arm/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm.apk
+            ./src-tauri/gen/android/app/build/outputs/apk/x86/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-x86.apk
+            ./src-tauri/gen/android/app/build/outputs/apk/x86_64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-x86_64.apk
