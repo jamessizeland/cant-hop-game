@@ -1,6 +1,6 @@
 /** This file defines a simple splash screen component for a web application. */
 
-import Footer from "components/Layout/footer";
+import Footer from "@/components/Layout/footer";
 import { motion } from "motion/react";
 
 const containerVariants = {

@@ -10,10 +10,16 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_os::init())
         .manage(state::AppContext::default())
-        .setup(|_app| {
+        .setup(|app| {
+            #[cfg(desktop)]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())?;
+
             #[cfg(debug_assertions)] // only include this code on debug builds
-            _app.get_webview_window("main").unwrap().open_devtools();
+            app.get_webview_window("main").unwrap().open_devtools();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

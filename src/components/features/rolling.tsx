@@ -1,13 +1,13 @@
 import React, { useState, useCallback } from "react";
-import { chooseColumns, endRun, rollDice } from "services/ipc";
-import { notifyError } from "services/notifications";
-import { DiceResult, GameState, PlayerChoice } from "types";
+import { chooseColumns, endRun, rollDice } from "@/services/ipc";
+import { notifyError } from "@/services/notifications";
+import { DiceResult, GameState, PlayerChoice } from "@/types";
 import DiceContainer from "./rolling/dice";
 import ChoiceContainer from "./rolling/choice";
 import TurnStartContainer from "./rolling/turnStart";
 import { useTour } from "@reactour/tour";
 import { MdQuestionMark } from "react-icons/md";
-import { useAiTurn } from "hooks/useAiTurn";
+import { useAiTurn } from "@/hooks/useAiTurn";
 
 type RollerProps = {
   setGameState: React.Dispatch<React.SetStateAction<GameState | undefined>>;

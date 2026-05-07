@@ -1,8 +1,8 @@
-import DiceRoller from "components/features/rolling";
-import Loader from "components/Layout/loader";
+import DiceRoller from "@/components/features/rolling";
+import Loader from "@/components/Layout/loader";
 import { useEffect, useState } from "react";
-import { getGameState } from "services/ipc";
-import { GameState } from "types";
+import { getGameState } from "@/services/ipc";
+import { GameState } from "@/types";
 import GameOverModal from "./Game/gameover";
 import TopBar from "./Game/topbar";
 import GameBoard from "./Game/board";

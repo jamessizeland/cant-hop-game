@@ -1,18 +1,20 @@
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import AppRoutes from "routes";
-import { Layout } from "components/Layout";
+import AppRoutes from "@/routes";
+import { Layout } from "@/components/Layout";
 import { TourProvider } from "@reactour/tour";
-import { tourSteps } from "services/tour";
-import { initStore } from "services/ipc";
+import { tourSteps } from "@/services/tour";
+import { initStore } from "@/services/ipc";
+import { checkForAppUpdate } from "@/services/updater";
 
-import "styles/global.css";
-import "styles/tailwind.css";
+import "@/styles/global.css";
+import "@/styles/tailwind.css";
 
 const Store: React.FC = () => {
   useEffect(() => {
     initStore(); // initialize the backend data store.
+    checkForAppUpdate();
   }, []);
   return null;
 };

@@ -7,7 +7,7 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="flex flex-col h-screen overflow-hidden">
       <ToastContainer />
       <div>
-        <div className="flex-grow">{children}</div>
+        <div className="grow">{children}</div>
       </div>
     </div>
   );

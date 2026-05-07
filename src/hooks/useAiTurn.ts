@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { aiCheckContinue, aiChooseColumn } from "services/ipc";
-import { notifyError, notifyInfo } from "services/notifications";
-import { DiceResult, GameState, Player, PlayerChoice } from "types";
+import { aiCheckContinue, aiChooseColumn } from "@/services/ipc";
+import { notifyError, notifyInfo } from "@/services/notifications";
+import { DiceResult, GameState, Player, PlayerChoice } from "@/types";
 
 interface UseAiTurnProps {
   player: Player;
