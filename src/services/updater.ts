@@ -4,12 +4,15 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { check, DownloadEvent } from "@tauri-apps/plugin-updater";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { appCacheDir, join } from "@tauri-apps/api/path";
+import { getVersion } from "@tauri-apps/api/app";
 import { notifyClickableInfo, notifyProgress } from "./notifications";
 
 let updateCheckStarted = false;
 
 const LATEST_RELEASE_URL =
   "https://github.com/jamessizeland/cant-hop-game/releases/latest";
+const LATEST_UPDATE_JSON_URL =
+  "https://github.com/jamessizeland/cant-hop-game/releases/latest/download/latest.json";
 
 const isTauriRuntime = (): boolean => "__TAURI_INTERNALS__" in window;
 
@@ -43,6 +46,16 @@ interface DownloadProgress {
 interface InstallPackageResponse {
   success: boolean;
   error?: string;
+}
+
+interface AndroidUpdateManifest {
+  version?: string;
+  pub_date?: string;
+  date?: string;
+  notes?: string;
+  body?: string;
+  platforms?: Record<string, { url?: string; signature?: string }>;
+  url?: string;
 }
 
 const installPackage = (path: string): Promise<InstallPackageResponse> =>
@@ -86,6 +99,56 @@ const updateDownloadUrl = (
   return typeof url === "string" ? url : LATEST_RELEASE_URL;
 };
 
+const versionParts = (version: string): number[] =>
+  version
+    .replace(/^v/i, "")
+    .split(/[.+-]/)[0]
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+
+const isNewerVersion = (remoteVersion: string, currentVersion: string) => {
+  const remote = versionParts(remoteVersion);
+  const current = versionParts(currentVersion);
+  const length = Math.max(remote.length, current.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const remotePart = remote[index] ?? 0;
+    const currentPart = current[index] ?? 0;
+    if (remotePart > currentPart) return true;
+    if (remotePart < currentPart) return false;
+  }
+
+  return false;
+};
+
+const checkAndroidUpdate = async (
+  target: string
+): Promise<AndroidUpdateManifest | null> => {
+  const [currentVersion, response] = await Promise.all([
+    getVersion(),
+    fetch(LATEST_UPDATE_JSON_URL, { cache: "no-store" }),
+  ]);
+
+  if (!response.ok) {
+    throw new Error(`Update manifest returned ${response.status}`);
+  }
+
+  const manifest = (await response.json()) as AndroidUpdateManifest;
+  if (!manifest.version || !isNewerVersion(manifest.version, currentVersion)) {
+    return null;
+  }
+
+  const downloadUrl = updateDownloadUrl(
+    manifest as Record<string, unknown>,
+    target
+  );
+  if (downloadUrl === LATEST_RELEASE_URL) {
+    throw new Error(`No Android APK URL found for ${target}`);
+  }
+
+  return manifest;
+};
+
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -101,23 +164,23 @@ export async function checkForAppUpdate(): Promise<void> {
     const runtimePlatform = currentPlatform();
     const androidTarget =
       runtimePlatform === "android" ? androidUpdateTarget() : null;
-    const update = await check(
-      androidTarget ? { target: androidTarget } : undefined
-    );
-
-    if (!update) return;
-
     if (androidTarget) {
-      const downloadUrl = updateDownloadUrl(update.rawJson, androidTarget);
+      const androidUpdate = await checkAndroidUpdate(androidTarget);
+      if (!androidUpdate?.version) return;
+
+      const downloadUrl = updateDownloadUrl(
+        androidUpdate as Record<string, unknown>,
+        androidTarget
+      );
       let downloaded = 0;
       let contentLength = 0;
       const progress = notifyProgress(
-        `Updating Can't Hop to ${update.version}...`,
+        `Updating Can't Hop to ${androidUpdate.version}...`,
         "appUpdate"
       );
       const apkPath = await join(
         await appCacheDir(),
-        `cant-hop-${update.version}.apk`
+        `cant-hop-${androidUpdate.version}.apk`
       );
 
       await downloadFile(downloadUrl, apkPath, (event) => {
@@ -139,7 +202,7 @@ export async function checkForAppUpdate(): Promise<void> {
       } else {
         progress.error(installResult.error ?? "Failed to open APK installer.");
         notifyClickableInfo(
-          `Tap to download Can't Hop ${update.version} in your browser.`,
+          `Tap to download Can't Hop ${androidUpdate.version} in your browser.`,
           () => openUrl(downloadUrl),
           "appUpdateFallback",
           false
@@ -147,6 +210,12 @@ export async function checkForAppUpdate(): Promise<void> {
       }
       return;
     }
+
+    const update = await check(
+      androidTarget ? { target: androidTarget } : undefined
+    );
+
+    if (!update) return;
 
     let downloaded = 0;
     let contentLength: number | undefined;
