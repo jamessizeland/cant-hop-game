@@ -122,12 +122,14 @@ impl History {
                 let mut croaked = 0;
                 let mut banked = 0;
                 let mut luck = 0.0;
+                let mut player_rolls = 0;
                 player.0.iter().for_each(|run| {
                     let run_luck: f64 = run
                         .turns
                         .iter()
                         .map(|turn| {
                             total_turns += 1;
+                            player_rolls += 1;
                             match turn.chosen {
                                 Some((first, Some(second))) => {
                                     *col_activity.entry(first).or_insert(0) += 1;
@@ -162,7 +164,12 @@ impl History {
                     longest_run,
                     croaked,
                     banked,
-                    luck: luck / total_turns as f64,
+                    total_rolls: player_rolls,
+                    luck: if player_rolls == 0 {
+                        0.0
+                    } else {
+                        luck / player_rolls as f64
+                    },
                 }
             })
             .collect();
@@ -177,7 +184,11 @@ impl History {
         println!("most contested column: {:?}", most_contested_columm);
         StatsSummary {
             player_stats,
-            most_contested_column: most_contested_columm.0,
+            most_contested_column: if most_contested_columm.1 == 0.0 {
+                0
+            } else {
+                most_contested_columm.0 + 2
+            },
             total_turns,
         }
     }
@@ -216,4 +227,89 @@ pub struct StatsSummary {
     /// Column that had the most total hops, normalized for column height
     pub most_contested_column: ColumnID,
     pub total_turns: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dice_result() -> DiceResult {
+        DiceResult {
+            dice: [1, 1, 1, 1],
+            choices: HashSet::new(),
+        }
+    }
+
+    fn columns(values: &[ColumnID]) -> HashSet<ColumnID> {
+        values.iter().copied().collect()
+    }
+
+    fn assert_approx_eq(left: f64, right: f64) {
+        let diff = (left - right).abs();
+        assert!(
+            diff < 1e-8,
+            "expected {left:?} to approximately equal {right:?}; diff was {diff:?}"
+        );
+    }
+
+    #[test]
+    fn summary_averages_luck_per_player() {
+        let mut history = History::default();
+        history.new_game(2).unwrap();
+
+        history
+            .player_mut()
+            .record_roll(&dice_result(), &HashSet::new());
+        history.player_mut().record_choice(5, None);
+
+        let player_one_active = columns(&[6, 7, 8]);
+        history
+            .player_mut()
+            .record_roll(&dice_result(), &player_one_active);
+        history.player_mut().record_choice(5, Some(6));
+        history.next_player(RunOutcome::Banked, HashSet::new());
+
+        history
+            .player_mut()
+            .record_roll(&dice_result(), &HashSet::new());
+
+        let player_two_active = columns(&[2, 3, 12]);
+        history
+            .player_mut()
+            .record_roll(&dice_result(), &player_two_active);
+        history.next_player(RunOutcome::Croaked, HashSet::new());
+
+        let summary = history.calculate_summary();
+        let player_one_chance = calculate_croak_chance(&player_one_active, &HashSet::new());
+        let player_two_chance = calculate_croak_chance(&player_two_active, &HashSet::new());
+
+        assert_eq!(summary.total_turns, 4);
+        assert_eq!(summary.player_stats[0].total_rolls, 2);
+        assert_eq!(summary.player_stats[1].total_rolls, 2);
+        assert_approx_eq(summary.player_stats[0].luck, player_one_chance / 2.0);
+        assert_approx_eq(
+            summary.player_stats[1].luck,
+            (player_two_chance - 1.0) / 2.0,
+        );
+    }
+
+    #[test]
+    fn summary_returns_display_column_not_backend_index() {
+        let mut history = History::default();
+        history.new_game(2).unwrap();
+
+        history
+            .player_mut()
+            .record_roll(&dice_result(), &HashSet::new());
+        history.player_mut().record_choice(5, None);
+        history
+            .player_mut()
+            .record_roll(&dice_result(), &columns(&[7]));
+        history.player_mut().record_choice(5, Some(6));
+        history.next_player(RunOutcome::Banked, HashSet::new());
+
+        let summary = history.calculate_summary();
+
+        assert_eq!(summary.most_contested_column, 7);
+    }
 }
