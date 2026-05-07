@@ -4,7 +4,6 @@ import PlayerForm from "@/components/elements/form";
 import { useEffect, useState } from "react";
 import { MdDataExploration } from "react-icons/md";
 import { Link } from "react-router-dom";
-import { getGameState, getName } from "services/ipc";
 import { getGameState, getName } from "@/services/ipc";
 
 export function SettingsPage() {

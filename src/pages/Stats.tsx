@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { getCareerStatistics, resetAchievements } from "services/ipc";
-import { AchievementKind, CareerStats } from "types";
+import { getCareerStatistics, resetAchievements } from "@/services/ipc";
+import { AchievementKind, CareerStats } from "@/types";
+import Modal from "@/components/elements/modal";
 
 const ACHIEVEMENT_CATALOG: {
   kind: AchievementKind;
@@ -102,6 +103,7 @@ const ACHIEVEMENT_CATALOG: {
 
 export function StatsPage() {
   const [stats, setStats] = useState<CareerStats>();
+  const [isResetConfirmationOpen, setIsResetConfirmationOpen] = useState(false);
 
   useEffect(() => {
     getCareerStatistics().then(setStats);
@@ -120,11 +122,12 @@ export function StatsPage() {
     stats?.achievements.map((achievement) => achievement.kind) ?? []
   );
 
-  async function handleResetAchievements() {
-    const confirmed = window.confirm(
-      "Reset earned achievements on this device? Career totals will stay."
-    );
-    if (!confirmed) return;
+  function handleResetAchievements() {
+    setIsResetConfirmationOpen(true);
+  }
+
+  async function confirmResetAchievements() {
+    setIsResetConfirmationOpen(false);
     const nextStats = await resetAchievements();
     setStats(nextStats);
   }
@@ -289,6 +292,12 @@ export function StatsPage() {
           </>
         )}
       </div>
+      <ConfirmationDialog
+        isOpen={isResetConfirmationOpen}
+        message="Reset earned achievements on this device? Career totals will stay."
+        onConfirm={confirmResetAchievements}
+        onCancel={() => setIsResetConfirmationOpen(false)}
+      />
     </main>
   );
 }
@@ -308,4 +317,36 @@ function formatDate(timestamp: number) {
     month: "short",
     year: "numeric",
   }).format(new Date(timestamp));
+}
+
+function ConfirmationDialog({
+  isOpen,
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  isOpen: boolean;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onCancel}
+      title="Reset Achievements?"
+      actions={
+        <>
+          <button className="btn btn-ghost" onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="btn btn-error" onClick={onConfirm}>
+            Reset
+          </button>
+        </>
+      }
+    >
+      <p className="text-center text-sm opacity-80">{message}</p>
+    </Modal>
+  );
 }

@@ -1,20 +1,18 @@
 import { useEffect, useState } from "react";
-import {
-  getCareerStatistics,
-  getGameStatistics,
-  startGame,
-  stopGame,
-} from "services/ipc";
-import {
-  AchievementRecord,
-  CareerStats,
-  GameState,
-  PlayerColors,
-  PlayerStats,
-  StatsSummary,
-} from "types";
-import { getGameStatistics, startGame, stopGame } from "@/services/ipc";
-import { GameState, PlayerColors, PlayerStats, StatsSummary } from "@/types";
+import { 
+  getCareerStatistics, 
+  getGameStatistics, 
+  startGame, 
+  stopGame 
+} from "@/services/ipc";
+import { 
+  AchievementRecord, 
+  CareerStats, 
+  GameState, 
+  PlayerColors, 
+  PlayerStats, 
+  StatsSummary
+} from "@/types";
 
 type GameOverModalProps = {
   gameState: GameState;
