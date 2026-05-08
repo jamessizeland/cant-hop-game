@@ -3,6 +3,10 @@ name: "publish android"
 on:
   workflow_dispatch:
 
+concurrency:
+  group: publish-android-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   APP_NAME: "cant-hop"
   GITHUB_TOKEN: ${{ secrets.GH_PAT }}
@@ -15,14 +19,14 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: setup bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Cache Bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
@@ -38,7 +42,7 @@ jobs:
 
       - name: Cache NDK
         id: cache-ndk
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           # Path where NDK version 27.0.11902837 is expected to be installed by setup-android
           path: /usr/local/lib/android/sdk/ndk/27.0.11902837
@@ -147,13 +151,14 @@ jobs:
           done
 
       - name: Publish
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           name: App v${{ steps.app-version.outputs.version_string }}
           tag_name: app-v${{ steps.app-version.outputs.version_string }}
           body: "See the assets to download this version and install."
-          draft: false
+          draft: true
           prerelease: false
+          overwrite_files: true
           files: |
             ./src-tauri/gen/android/app/build/outputs/apk/arm64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm64.apk
             ./src-tauri/gen/android/app/build/outputs/apk/arm64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm64.apk.sig
@@ -171,10 +176,9 @@ jobs:
         run: |
           TAG="app-v${VERSION}"
           MANIFEST="$RUNNER_TEMP/latest.json"
-          MANIFEST_URL="https://github.com/jamessizeland/cant-hop-game/releases/download/${TAG}/latest.json"
           export MANIFEST
 
-          if ! curl -fsSL "$MANIFEST_URL" -o "$MANIFEST"; then
+          if ! gh release download "$TAG" --pattern latest.json --dir "$RUNNER_TEMP" --clobber; then
             printf '{"version":"%s","notes":"See the assets to download this version and install.","platforms":{}}\n' "$VERSION" > "$MANIFEST"
           fi
 
@@ -220,3 +224,4 @@ jobs:
           PY
 
           gh release upload "$TAG" "$MANIFEST" --clobber
+          gh release edit "$TAG" --draft=false --latest

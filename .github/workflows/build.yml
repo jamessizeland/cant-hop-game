@@ -1,4 +1,4 @@
-name: "publish desktop"
+name: "publish app"
 
 on:
   pull_request:
@@ -7,15 +7,21 @@ on:
     types:
       - closed
 
+concurrency:
+  group: publish-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   publish-tauri:
     # This is to ensure that only the owner can publish the app.
     if: ${{ github.event.pull_request.merged && github.repository_owner == 'jamessizeland' }} 
+    needs: publish-android
     name: "Publish Tauri App"
     permissions:
       contents: write
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - platform: "macos-latest" # for Arm based macs (M1 and above).
@@ -29,7 +35,7 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: setup bun
         uses: oven-sh/setup-bun@v2
@@ -81,18 +87,18 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
+          retryAttempts: 3
           args: ${{ matrix.args }}
 
   publish-android:
     if: ${{ github.event.pull_request.merged && github.repository_owner == 'jamessizeland' }}
-    needs: publish-tauri
     permissions:
       contents: write
     runs-on: ubuntu-latest
     env:
       APP_NAME: cant-hop
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: setup bun
         uses: oven-sh/setup-bun@v2
@@ -100,7 +106,7 @@ jobs:
           bun-version: latest
 
       - name: Cache Bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
@@ -116,7 +122,7 @@ jobs:
 
       - name: Cache NDK
         id: cache-ndk
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /usr/local/lib/android/sdk/ndk/27.0.11902837
           key: ndk-${{ runner.os }}-27.0.11902837
@@ -201,11 +207,16 @@ jobs:
           done
 
       - name: Publish Android APKs
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
+          name: App v${{ steps.app-version.outputs.version_string }}
           tag_name: app-v${{ steps.app-version.outputs.version_string }}
+          body: "See the assets to download this version and install."
+          draft: false
+          prerelease: false
+          overwrite_files: true
           files: |
             ./src-tauri/gen/android/app/build/outputs/apk/arm64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm64.apk
             ./src-tauri/gen/android/app/build/outputs/apk/arm64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm64.apk.sig
@@ -223,10 +234,9 @@ jobs:
         run: |
           TAG="app-v${VERSION}"
           MANIFEST="$RUNNER_TEMP/latest.json"
-          MANIFEST_URL="https://github.com/jamessizeland/cant-hop-game/releases/download/${TAG}/latest.json"
           export MANIFEST
 
-          if ! curl -fsSL "$MANIFEST_URL" -o "$MANIFEST"; then
+          if ! gh release download "$TAG" --pattern latest.json --dir "$RUNNER_TEMP" --clobber; then
             printf '{"version":"%s","notes":"See the assets to download this version and install.","platforms":{}}\n' "$VERSION" > "$MANIFEST"
           fi
 
@@ -272,3 +282,86 @@ jobs:
           PY
 
           gh release upload "$TAG" "$MANIFEST" --clobber
+          gh release edit "$TAG" --latest
+
+  finalize-android-manifest:
+    if: ${{ always() && github.event.pull_request.merged && github.repository_owner == 'jamessizeland' && needs.publish-android.result == 'success' }}
+    needs:
+      - publish-android
+      - publish-tauri
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      APP_NAME: cant-hop
+      GH_TOKEN: ${{ secrets.GH_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Tauri App Version
+        id: app-version
+        run: |
+          VERSION_STRING=$(grep '^version = "' src-tauri/Cargo.toml | head -n 1 | sed -e 's/version = "//' -e 's/"//')
+          if [ -z "$VERSION_STRING" ] || [ "$VERSION_STRING" = "null" ]; then
+            echo "Error: Version not found or is invalid in src-tauri/Cargo.toml."
+            exit 1
+          fi
+          echo "version_string=$VERSION_STRING" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Android updater entries
+        env:
+          VERSION: ${{ steps.app-version.outputs.version_string }}
+        run: |
+          TAG="app-v${VERSION}"
+          MANIFEST="$RUNNER_TEMP/latest.json"
+          SIG_DIR="$RUNNER_TEMP/android-sigs"
+          mkdir -p "$SIG_DIR"
+          export MANIFEST SIG_DIR
+
+          if ! gh release download "$TAG" --pattern latest.json --dir "$RUNNER_TEMP" --clobber; then
+            printf '{"version":"%s","notes":"See the assets to download this version and install.","platforms":{}}\n' "$VERSION" > "$MANIFEST"
+          fi
+
+          gh release download "$TAG" --pattern "${APP_NAME}-${VERSION}-android-*.apk.sig" --dir "$SIG_DIR" --clobber
+
+          python3 - <<'PY'
+          import json
+          import os
+
+          manifest_path = os.environ["MANIFEST"]
+          version = os.environ["VERSION"]
+          tag = f"app-v{version}"
+          app_name = os.environ["APP_NAME"]
+          sig_dir = os.environ["SIG_DIR"]
+          base_url = f"https://github.com/jamessizeland/cant-hop-game/releases/download/{tag}"
+          targets = [
+              "android-arm64",
+              "android-arm",
+              "android-x86",
+              "android-x86_64",
+          ]
+
+          with open(manifest_path, "r", encoding="utf-8") as file:
+              manifest = json.load(file)
+
+          manifest["version"] = version
+          manifest.setdefault("notes", "See the assets to download this version and install.")
+          platforms = manifest.setdefault("platforms", {})
+
+          for target in targets:
+              apk_name = f"{app_name}-{version}-{target}.apk"
+              signature_path = os.path.join(sig_dir, f"{apk_name}.sig")
+              with open(signature_path, "r", encoding="utf-8") as file:
+                  signature = file.read().strip()
+              platforms[target] = {
+                  "signature": signature,
+                  "url": f"{base_url}/{apk_name}",
+              }
+
+          with open(manifest_path, "w", encoding="utf-8") as file:
+              json.dump(manifest, file, indent=2)
+              file.write("\n")
+          PY
+
+          gh release upload "$TAG" "$MANIFEST" --clobber
+          gh release edit "$TAG" --latest
