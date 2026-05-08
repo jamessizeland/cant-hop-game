@@ -13,6 +13,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_apk_installer::init())
         .manage(state::AppContext::default())
         .setup(|_app| {

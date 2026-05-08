@@ -5,6 +5,14 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://github.com/jamessizeland/cant-hop-game/releases/latest/download/latest.json"
+        }
+      ]
+    },
     "opener:default",
     "process:default",
     "store:default"
