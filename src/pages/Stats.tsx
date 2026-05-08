@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { IoIosArrowBack } from "react-icons/io";
 import { getCareerStatistics, resetAchievements } from "@/services/ipc";
 import { AchievementKind, CareerStats } from "@/types";
 import Modal from "@/components/elements/modal";
+import { MdClose } from "react-icons/md";
 
 const ACHIEVEMENT_CATALOG: {
   id: string;
@@ -163,24 +163,16 @@ export function StatsPage() {
             <div className="min-w-0">
               <Link
                 to="/settings"
-                className="btn btn-sm btn-outline mb-2 px-2"
+                className="absolute right-6 top-4 text-2xl"
                 aria-label="Back to settings"
               >
-                <IoIosArrowBack />
-                Back
+                <MdClose />
               </Link>
               <h1 className="text-3xl font-bold">Statistics</h1>
               <p className="mt-1 text-sm opacity-75">
                 Device-wide totals for human players on this device.
               </p>
             </div>
-            <button
-              className="btn btn-sm btn-outline"
-              onClick={handleResetAchievements}
-              disabled={!stats || stats.achievements.length === 0}
-            >
-              Reset Achievements
-            </button>
           </div>
         </header>
 
@@ -318,6 +310,13 @@ export function StatsPage() {
                     </article>
                   );
                 })}
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={handleResetAchievements}
+                  disabled={!stats || stats.achievements.length === 0}
+                >
+                  Reset Achievements
+                </button>
               </div>
             </section>
           </>

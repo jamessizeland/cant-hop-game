@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "fs:default",
+    "fs:allow-open",
     "fs:allow-write",
     {
       "identifier": "fs:scope-appcache-recursive",

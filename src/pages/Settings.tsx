@@ -6,6 +6,7 @@ import { LiaAwardSolid } from "react-icons/lia";
 import { Link } from "react-router-dom";
 import { getGameState, getName } from "@/services/ipc";
 import { checkForAppUpdate, diagnoseAppUpdate } from "@/services/updater";
+import { MdClose } from "react-icons/md";
 
 export function SettingsPage() {
   const [resume, setResume] = useState(false);
@@ -36,6 +37,13 @@ export function SettingsPage() {
           aria-label="Career statistics"
         >
         <LiaAwardSolid className="text-2xl" />
+        </Link>
+        <Link
+          to="/"
+          className="absolute left-4 top-4 text-2xl"
+          aria-label="Back to settings"
+          >
+          <MdClose />
         </Link>
       </div>
       <div className="flex gap-2">
