@@ -2,6 +2,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { arch, platform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { check, DownloadEvent } from "@tauri-apps/plugin-updater";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { appCacheDir, join } from "@tauri-apps/api/path";
 import { getVersion } from "@tauri-apps/api/app";
@@ -115,11 +116,7 @@ const checkAndroidReleaseAsset = async (
   target: string,
   currentVersion: string
 ): Promise<AndroidUpdate | null> => {
-  const response = await fetch(LATEST_RELEASE_MANIFEST_URL, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`Updater manifest returned ${response.status}`);
-  }
-
+  const response = await tauriFetch(LATEST_RELEASE_MANIFEST_URL);
   const manifest = (await response.json()) as UpdateManifest;
   const version = manifest.version?.replace(/^v/i, "");
   if (!version || !isNewerVersion(version, currentVersion)) return null;
@@ -164,9 +161,7 @@ export async function diagnoseAppUpdate(): Promise<void> {
       return;
     }
 
-    const response = await fetch(LATEST_RELEASE_MANIFEST_URL, {
-      cache: "no-store",
-    });
+    const response = await tauriFetch(LATEST_RELEASE_MANIFEST_URL);
     const manifest = (await response.json()) as UpdateManifest;
     const remoteVersion = manifest.version?.replace(/^v/i, "") ?? "unknown";
     const platform =
