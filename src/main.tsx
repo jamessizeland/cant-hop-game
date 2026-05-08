@@ -6,7 +6,6 @@ import { Layout } from "@/components/Layout";
 import { TourProvider } from "@reactour/tour";
 import { tourSteps } from "@/services/tour";
 import { initStore } from "@/services/ipc";
-import { checkForAppUpdate } from "@/services/updater";
 
 import "@/styles/global.css";
 import "@/styles/tailwind.css";
@@ -14,7 +13,6 @@ import "@/styles/tailwind.css";
 const Store: React.FC = () => {
   useEffect(() => {
     initStore(); // initialize the backend data store.
-    checkForAppUpdate();
   }, []);
   return null;
 };
