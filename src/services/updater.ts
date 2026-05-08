@@ -99,6 +99,8 @@ const downloadFile = (
   });
 };
 
+const fetchText = (url: string): Promise<string> => invoke("fetch_text", { url });
+
 const updateDownloadUrl = (
   rawJson: Record<string, unknown>,
   target: string
@@ -175,12 +177,9 @@ const checkAndroidReleaseAsset = async (
   target: string,
   currentVersion: string
 ): Promise<AndroidUpdate | null> => {
-  const response = await fetch(LATEST_RELEASE_API_URL, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`GitHub release API returned ${response.status}`);
-  }
-
-  const release = (await response.json()) as GitHubRelease;
+  const release = JSON.parse(
+    await fetchText(LATEST_RELEASE_API_URL)
+  ) as GitHubRelease;
   const version = releaseVersion(release);
   if (!version || !isNewerVersion(version, currentVersion)) return null;
 
@@ -200,13 +199,13 @@ const checkAndroidReleaseAsset = async (
 const checkAndroidUpdate = async (
   target: string
 ): Promise<AndroidUpdate | null> => {
-  const [currentVersion, response] = await Promise.all([
+  const [currentVersion, manifestText] = await Promise.all([
     getVersion(),
-    fetch(LATEST_UPDATE_JSON_URL, { cache: "no-store" }),
+    fetchText(LATEST_UPDATE_JSON_URL).catch(() => null),
   ]);
 
-  if (response.ok) {
-    const manifest = (await response.json()) as AndroidUpdateManifest;
+  if (manifestText) {
+    const manifest = JSON.parse(manifestText) as AndroidUpdateManifest;
     if (manifest.version && isNewerVersion(manifest.version, currentVersion)) {
       const downloadUrl = updateDownloadUrl(
         manifest as Record<string, unknown>,
