@@ -5,7 +5,12 @@ import { check, DownloadEvent } from "@tauri-apps/plugin-updater";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { appCacheDir, join } from "@tauri-apps/api/path";
 import { getVersion } from "@tauri-apps/api/app";
-import { notifyClickableInfo, notifyProgress } from "./notifications";
+import {
+  notifyClickableInfo,
+  notifyError,
+  notifyInfo,
+  notifyProgress,
+} from "./notifications";
 
 let updateCheckStarted = false;
 
@@ -140,6 +145,51 @@ const checkAndroidUpdate = async (
   return checkAndroidReleaseAsset(target, currentVersion);
 };
 
+export async function diagnoseAppUpdate(): Promise<void> {
+  try {
+    const tauriRuntime = isTauriRuntime();
+    const osPluginRuntime = "__TAURI_OS_PLUGIN_INTERNALS__" in window;
+    const runtimePlatform = currentPlatform();
+    const runtimeArch = osPluginRuntime ? arch() : "unknown";
+    const androidTarget =
+      runtimePlatform === "android" ? androidUpdateTarget() : "n/a";
+    const currentVersion = tauriRuntime ? await getVersion() : "unknown";
+
+    if (runtimePlatform !== "android") {
+      notifyInfo(
+        `Updater diagnostics: platform=${runtimePlatform ?? "unknown"}, arch=${runtimeArch}, version=${currentVersion}`,
+        "appUpdateDiagnostics",
+        10000
+      );
+      return;
+    }
+
+    const response = await fetch(LATEST_RELEASE_MANIFEST_URL, {
+      cache: "no-store",
+    });
+    const manifest = (await response.json()) as UpdateManifest;
+    const remoteVersion = manifest.version?.replace(/^v/i, "") ?? "unknown";
+    const platform =
+      manifest.platforms?.[androidTarget] ??
+      manifest.platforms?.["android-universal"];
+    const decision = isNewerVersion(remoteVersion, currentVersion)
+      ? platform?.url
+        ? "update available"
+        : "missing APK entry"
+      : "not newer";
+
+    notifyInfo(
+      `Updater diagnostics: platform=${runtimePlatform}, arch=${runtimeArch}, target=${androidTarget}, current=${currentVersion}, remote=${remoteVersion}, decision=${decision}`,
+      "appUpdateDiagnostics",
+      15000
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    notifyError(`Updater diagnostics failed: ${message}`, "appUpdateDiagnostics", 15000);
+    console.error("Updater diagnostics failed:", error);
+  }
+}
+
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -147,8 +197,14 @@ const formatBytes = (bytes: number): string => {
 };
 
 /** Check GitHub Releases for a signed updater bundle and install it when found. */
-export async function checkForAppUpdate(): Promise<void> {
-  if (updateCheckStarted || !isTauriRuntime() || !isUpdaterRuntime()) return;
+export async function checkForAppUpdate(force = false): Promise<void> {
+  if (!force && updateCheckStarted) return;
+  if (!isTauriRuntime() || !isUpdaterRuntime()) {
+    if (force) {
+      notifyError("Updater is not available in this runtime.", "appUpdate", 8000);
+    }
+    return;
+  }
   updateCheckStarted = true;
 
   try {
@@ -157,7 +213,12 @@ export async function checkForAppUpdate(): Promise<void> {
       runtimePlatform === "android" ? androidUpdateTarget() : null;
     if (androidTarget) {
       const androidUpdate = await checkAndroidUpdate(androidTarget);
-      if (!androidUpdate) return;
+      if (!androidUpdate) {
+        if (force) {
+          notifyInfo("No Android update available.", "appUpdate", 6000);
+        }
+        return;
+      }
 
       const downloadUrl = androidUpdate.url;
       let downloaded = 0;
@@ -238,6 +299,10 @@ export async function checkForAppUpdate(): Promise<void> {
     progress.success("Update installed. Restarting...");
     await relaunch();
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (force) {
+      notifyError(`Update check failed: ${message}`, "appUpdate", 12000);
+    }
     console.error("Error during app update:", error);
   }
 }

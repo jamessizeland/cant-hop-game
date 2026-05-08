@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { LiaAwardSolid } from "react-icons/lia";
 import { Link } from "react-router-dom";
 import { getGameState, getName } from "@/services/ipc";
+import { checkForAppUpdate, diagnoseAppUpdate } from "@/services/updater";
 
 export function SettingsPage() {
   const [resume, setResume] = useState(false);
@@ -36,6 +37,17 @@ export function SettingsPage() {
         >
         <LiaAwardSolid className="text-2xl" />
         </Link>
+      </div>
+      <div className="flex gap-2">
+        <button className="btn btn-sm btn-outline" onClick={diagnoseAppUpdate}>
+          Update Diagnostics
+        </button>
+        <button
+          className="btn btn-sm btn-outline"
+          onClick={() => checkForAppUpdate(true)}
+        >
+          Check Update
+        </button>
       </div>
       <PlayerForm first={names[0]} second={names[1]} />
       {resume ? (
