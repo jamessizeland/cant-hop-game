@@ -93,7 +93,7 @@ const downloadFile = (
 const versionParts = (version: string): number[] =>
   version
     .replace(/^v/i, "")
-    .split(/[.+-]/)[0]
+    .split(/[+-]/)[0]
     .split(".")
     .map((part) => Number.parseInt(part, 10) || 0);
 
