@@ -5,11 +5,24 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "fs:default",
+    "fs:allow-write",
+    {
+      "identifier": "fs:scope-appcache-recursive",
+      "allow": [
+        {
+          "path": "$APPCACHE/**/*"
+        }
+      ]
+    },
     {
       "identifier": "http:default",
       "allow": [
         {
-          "url": "https://github.com/jamessizeland/cant-hop-game/releases/latest/download/latest.json"
+          "url": "https://github.com/jamessizeland/cant-hop-game/*"
+        },
+        {
+          "url": "https://*.githubusercontent.com/*"
         }
       ]
     },

@@ -3,7 +3,8 @@ import { arch, platform } from "@tauri-apps/plugin-os";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { check, DownloadEvent } from "@tauri-apps/plugin-updater";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { Channel, invoke } from "@tauri-apps/api/core";
+import { writeFile } from "@tauri-apps/plugin-fs";
+import { invoke } from "@tauri-apps/api/core";
 import { appCacheDir, join } from "@tauri-apps/api/path";
 import { getVersion } from "@tauri-apps/api/app";
 import {
@@ -71,6 +72,18 @@ interface AndroidUpdate {
   date?: string;
 }
 
+export interface AppUpdateProgress {
+  status: string;
+  downloaded?: number;
+  total?: number;
+}
+
+export interface AvailableAppUpdate {
+  version: string;
+  notes?: string;
+  install: (onProgress: (progress: AppUpdateProgress) => void) => Promise<void>;
+}
+
 const installPackage = (path: string): Promise<InstallPackageResponse> =>
   invoke("plugin:apk-installer|install_package", {
     payload: { path },
@@ -80,15 +93,41 @@ const downloadFile = (
   url: string,
   filePath: string,
   onProgress: (progress: DownloadProgress) => void
-): Promise<void> => {
-  const channel = new Channel<DownloadProgress>();
-  channel.onmessage = onProgress;
-  return invoke("download_file", {
-    url,
-    filePath,
-    onProgress: channel,
+): Promise<void> =>
+  tauriFetch(url).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`Download failed with status ${response.status}`);
+    }
+
+    const total = Number.parseInt(
+      response.headers.get("content-length") ?? "0",
+      10
+    );
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("Download response had no body");
+    }
+
+    let progress = 0;
+    const progressStream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        const { done, value } = await reader.read();
+        if (done) {
+          controller.close();
+          return;
+        }
+
+        progress += value.byteLength;
+        onProgress({ progress, total });
+        controller.enqueue(value);
+      },
+      cancel(reason) {
+        return reader.cancel(reason);
+      },
+    });
+
+    await writeFile(filePath, progressStream);
   });
-};
 
 const versionParts = (version: string): number[] =>
   version
@@ -191,108 +230,153 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 };
 
-/** Check GitHub Releases for a signed updater bundle and install it when found. */
-export async function checkForAppUpdate(force = false): Promise<void> {
-  if (!force && updateCheckStarted) return;
+export { formatBytes };
+
+export async function getAvailableAppUpdate(
+  force = false
+): Promise<AvailableAppUpdate | null> {
+  if (!force && updateCheckStarted) return null;
   if (!isTauriRuntime() || !isUpdaterRuntime()) {
     if (force) {
       notifyError("Updater is not available in this runtime.", "appUpdate", 8000);
     }
-    return;
+    return null;
   }
   updateCheckStarted = true;
 
-  try {
-    const runtimePlatform = currentPlatform();
-    const androidTarget =
-      runtimePlatform === "android" ? androidUpdateTarget() : null;
-    if (androidTarget) {
-      const androidUpdate = await checkAndroidUpdate(androidTarget);
-      if (!androidUpdate) {
-        if (force) {
-          notifyInfo("No Android update available.", "appUpdate", 6000);
-        }
-        return;
+  const runtimePlatform = currentPlatform();
+  const androidTarget =
+    runtimePlatform === "android" ? androidUpdateTarget() : null;
+  if (androidTarget) {
+    const androidUpdate = await checkAndroidUpdate(androidTarget);
+    if (!androidUpdate) {
+      if (force) {
+        notifyInfo("No Android update available.", "appUpdate", 6000);
       }
+      return null;
+    }
 
-      const downloadUrl = androidUpdate.url;
-      let downloaded = 0;
-      let contentLength = 0;
-      const progress = notifyProgress(
-        `Updating Can't Hop to ${androidUpdate.version}...`,
-        "appUpdate"
-      );
-      const apkPath = await join(
-        await appCacheDir(),
-        `cant-hop-${androidUpdate.version}.apk`
-      );
-
-      await downloadFile(downloadUrl, apkPath, (event) => {
-        downloaded = event.progress;
-        contentLength = event.total;
-        progress.update(
-          contentLength
-            ? `Downloading ${formatBytes(downloaded)} of ${formatBytes(
-                contentLength
-              )}...`
-            : `Downloading ${formatBytes(downloaded)}...`
+    return {
+      version: androidUpdate.version,
+      notes: androidUpdate.notes,
+      install: async (onProgress) => {
+        const downloadUrl = androidUpdate.url;
+        let downloaded = 0;
+        let contentLength = 0;
+        const apkPath = await join(
+          await appCacheDir(),
+          `cant-hop-${androidUpdate.version}.apk`
         );
-      });
 
-      progress.update("Opening Android installer...");
-      const installResult = await installPackage(apkPath);
-      if (installResult.success) {
-        progress.success("APK ready. Finish installation in Android.", 8000);
-      } else {
-        progress.error(installResult.error ?? "Failed to open APK installer.");
+        onProgress({
+          status: `Downloading Can't Hop ${androidUpdate.version}...`,
+        });
+        await downloadFile(downloadUrl, apkPath, (event) => {
+          downloaded = event.progress;
+          contentLength = event.total;
+          onProgress({
+            status: contentLength
+              ? `Downloading ${formatBytes(downloaded)} of ${formatBytes(
+                  contentLength
+                )}...`
+              : `Downloading ${formatBytes(downloaded)}...`,
+            downloaded,
+            total: contentLength,
+          });
+        });
+
+        onProgress({
+          status: "Opening Android installer...",
+          downloaded,
+          total: contentLength,
+        });
+        const installResult = await installPackage(apkPath);
+        if (installResult.success) {
+          onProgress({
+            status: "APK ready. Finish installation in Android.",
+            downloaded,
+            total: contentLength,
+          });
+          return;
+        }
+
         notifyClickableInfo(
           `Tap to download Can't Hop ${androidUpdate.version} in your browser.`,
           () => openUrl(downloadUrl),
           "appUpdateFallback",
           false
         );
-      }
-      return;
-    }
+        throw new Error(installResult.error ?? "Failed to open APK installer.");
+      },
+    };
+  }
 
-    const update = await check(
-      androidTarget ? { target: androidTarget } : undefined
-    );
+  const update = await check(
+    androidTarget ? { target: androidTarget } : undefined
+  );
 
+  if (!update) return null;
+
+  return {
+    version: update.version,
+    notes: update.body,
+    install: async (onProgress) => {
+      let downloaded = 0;
+      let contentLength: number | undefined;
+      const onDownloadEvent = (event: DownloadEvent) => {
+        switch (event.event) {
+          case "Started":
+            contentLength = event.data.contentLength;
+            onProgress({
+              status: `Downloading Can't Hop ${update.version}...`,
+              total: contentLength,
+            });
+            break;
+          case "Progress":
+            downloaded += event.data.chunkLength;
+            onProgress({
+              status: contentLength
+                ? `Downloading ${formatBytes(downloaded)} of ${formatBytes(
+                    contentLength
+                  )}...`
+                : `Downloading ${formatBytes(downloaded)}...`,
+              downloaded,
+              total: contentLength,
+            });
+            break;
+          case "Finished":
+            onProgress({
+              status: "Installing update...",
+              downloaded,
+              total: contentLength,
+            });
+            break;
+        }
+      };
+
+      await update.downloadAndInstall(onDownloadEvent);
+      onProgress({
+        status: "Update installed. Restarting...",
+        downloaded,
+        total: contentLength,
+      });
+      await relaunch();
+    },
+  };
+}
+
+/** Check GitHub Releases for a signed updater bundle and install it when requested. */
+export async function checkForAppUpdate(force = false): Promise<void> {
+  try {
+    const update = await getAvailableAppUpdate(force);
     if (!update) return;
 
-    let downloaded = 0;
-    let contentLength: number | undefined;
     const progress = notifyProgress(
       `Updating Can't Hop to ${update.version}...`,
       "appUpdate"
     );
-
-    const onDownloadEvent = (event: DownloadEvent) => {
-      switch (event.event) {
-        case "Started":
-          contentLength = event.data.contentLength;
-          progress.update(`Downloading Can't Hop ${update.version}...`);
-          break;
-        case "Progress":
-          downloaded += event.data.chunkLength;
-          progress.update(
-            contentLength
-              ? `Downloading ${formatBytes(downloaded)} of ${formatBytes(
-                  contentLength
-                )}...`
-              : `Downloading ${formatBytes(downloaded)}...`
-          );
-          break;
-        case "Finished":
-          progress.update("Installing update...");
-          break;
-      }
-    };
-
-    await update.downloadAndInstall(onDownloadEvent);
-    progress.success("Update installed. Restarting...");
-    await relaunch();
+    await update.install((event) => progress.update(event.status));
+    progress.success("Update flow started.", 8000);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (force) {
