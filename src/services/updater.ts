@@ -13,6 +13,8 @@ const LATEST_RELEASE_URL =
   "https://github.com/jamessizeland/cant-hop-game/releases/latest";
 const LATEST_UPDATE_JSON_URL =
   "https://github.com/jamessizeland/cant-hop-game/releases/latest/download/latest.json";
+const LATEST_RELEASE_API_URL =
+  "https://api.github.com/repos/jamessizeland/cant-hop-game/releases/latest";
 
 const isTauriRuntime = (): boolean => "__TAURI_INTERNALS__" in window;
 
@@ -56,6 +58,26 @@ interface AndroidUpdateManifest {
   body?: string;
   platforms?: Record<string, { url?: string; signature?: string }>;
   url?: string;
+}
+
+interface GitHubReleaseAsset {
+  name: string;
+  browser_download_url: string;
+}
+
+interface GitHubRelease {
+  tag_name?: string;
+  name?: string;
+  body?: string;
+  published_at?: string;
+  assets?: GitHubReleaseAsset[];
+}
+
+interface AndroidUpdate {
+  version: string;
+  url: string;
+  notes?: string;
+  date?: string;
 }
 
 const installPackage = (path: string): Promise<InstallPackageResponse> =>
@@ -121,32 +143,87 @@ const isNewerVersion = (remoteVersion: string, currentVersion: string) => {
   return false;
 };
 
+const releaseVersion = (release: GitHubRelease): string | null => {
+  const rawVersion = release.tag_name ?? release.name ?? "";
+  const match = rawVersion.match(/v?(\d+\.\d+\.\d+(?:[-+][\w.-]+)?)/);
+  return match?.[1] ?? null;
+};
+
+const androidAssetUrl = (
+  release: GitHubRelease,
+  target: string
+): string | null => {
+  const assets = release.assets ?? [];
+  const matchingAsset = assets.find(
+    (asset) => asset.name.endsWith(".apk") && asset.name.includes(target)
+  );
+  const fallbackAsset = assets.find(
+    (asset) =>
+      asset.name.endsWith(".apk") &&
+      (asset.name.includes("android-universal") ||
+        asset.name.includes("universal"))
+  );
+
+  return (
+    matchingAsset?.browser_download_url ??
+    fallbackAsset?.browser_download_url ??
+    null
+  );
+};
+
+const checkAndroidReleaseAsset = async (
+  target: string,
+  currentVersion: string
+): Promise<AndroidUpdate | null> => {
+  const response = await fetch(LATEST_RELEASE_API_URL, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`GitHub release API returned ${response.status}`);
+  }
+
+  const release = (await response.json()) as GitHubRelease;
+  const version = releaseVersion(release);
+  if (!version || !isNewerVersion(version, currentVersion)) return null;
+
+  const url = androidAssetUrl(release, target);
+  if (!url) {
+    throw new Error(`No Android APK release asset found for ${target}`);
+  }
+
+  return {
+    version,
+    url,
+    notes: release.body,
+    date: release.published_at,
+  };
+};
+
 const checkAndroidUpdate = async (
   target: string
-): Promise<AndroidUpdateManifest | null> => {
+): Promise<AndroidUpdate | null> => {
   const [currentVersion, response] = await Promise.all([
     getVersion(),
     fetch(LATEST_UPDATE_JSON_URL, { cache: "no-store" }),
   ]);
 
-  if (!response.ok) {
-    throw new Error(`Update manifest returned ${response.status}`);
+  if (response.ok) {
+    const manifest = (await response.json()) as AndroidUpdateManifest;
+    if (manifest.version && isNewerVersion(manifest.version, currentVersion)) {
+      const downloadUrl = updateDownloadUrl(
+        manifest as Record<string, unknown>,
+        target
+      );
+      if (downloadUrl !== LATEST_RELEASE_URL) {
+        return {
+          version: manifest.version,
+          url: downloadUrl,
+          notes: manifest.notes ?? manifest.body,
+          date: manifest.pub_date ?? manifest.date,
+        };
+      }
+    }
   }
 
-  const manifest = (await response.json()) as AndroidUpdateManifest;
-  if (!manifest.version || !isNewerVersion(manifest.version, currentVersion)) {
-    return null;
-  }
-
-  const downloadUrl = updateDownloadUrl(
-    manifest as Record<string, unknown>,
-    target
-  );
-  if (downloadUrl === LATEST_RELEASE_URL) {
-    throw new Error(`No Android APK URL found for ${target}`);
-  }
-
-  return manifest;
+  return checkAndroidReleaseAsset(target, currentVersion);
 };
 
 const formatBytes = (bytes: number): string => {
@@ -166,12 +243,9 @@ export async function checkForAppUpdate(): Promise<void> {
       runtimePlatform === "android" ? androidUpdateTarget() : null;
     if (androidTarget) {
       const androidUpdate = await checkAndroidUpdate(androidTarget);
-      if (!androidUpdate?.version) return;
+      if (!androidUpdate) return;
 
-      const downloadUrl = updateDownloadUrl(
-        androidUpdate as Record<string, unknown>,
-        androidTarget
-      );
+      const downloadUrl = androidUpdate.url;
       let downloaded = 0;
       let contentLength = 0;
       const progress = notifyProgress(
