@@ -37,7 +37,6 @@ pub fn run() {
             ipc::get_career_statistics,
             ipc::reset_achievements,
             download::download_file,
-            download::fetch_text,
             ipc::ai::check_continue,
             ipc::ai::choose_column,
         ])
