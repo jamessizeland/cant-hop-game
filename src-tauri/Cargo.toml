@@ -1,6 +1,6 @@
 [package]
 name = "cant-hop"
-version = "0.6.2"
+version = "0.6.3"
 description = "Frog themed push your luck rolling game."
 authors = ["you"]
 edition = "2024"
