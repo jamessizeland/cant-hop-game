@@ -82,3 +82,67 @@ jobs:
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+  add-android-updater-entries:
+    if: ${{ github.event.pull_request.merged && github.repository_owner == 'jamessizeland' }}
+    needs: publish-tauri
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get Tauri App Version
+        id: app-version
+        run: |
+          VERSION_STRING=$(grep '^version = "' src-tauri/Cargo.toml | head -n 1 | sed -e 's/version = "//' -e 's/"//')
+          if [ -z "$VERSION_STRING" ] || [ "$VERSION_STRING" = "null" ]; then
+            echo "Error: Version not found or is invalid in src-tauri/Cargo.toml."
+            exit 1
+          fi
+          echo "version_string=$VERSION_STRING" >> "$GITHUB_OUTPUT"
+
+      - name: Add Android entries to updater manifest
+        env:
+          APP_NAME: cant-hop
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          VERSION: ${{ steps.app-version.outputs.version_string }}
+        run: |
+          TAG="app-v${VERSION}"
+          MANIFEST="$RUNNER_TEMP/latest.json"
+          MANIFEST_URL="https://github.com/jamessizeland/cant-hop-game/releases/download/${TAG}/latest.json"
+          export MANIFEST
+
+          if ! curl -fsSL "$MANIFEST_URL" -o "$MANIFEST"; then
+            printf '{"version":"%s","notes":"See the assets to download this version and install.","platforms":{}}\n' "$VERSION" > "$MANIFEST"
+          fi
+
+          python3 - <<'PY'
+          import json
+          import os
+
+          manifest_path = os.environ["MANIFEST"]
+          version = os.environ["VERSION"]
+          tag = f"app-v{version}"
+          app_name = os.environ["APP_NAME"]
+          base_url = f"https://github.com/jamessizeland/cant-hop-game/releases/download/{tag}"
+
+          with open(manifest_path, "r", encoding="utf-8") as file:
+              manifest = json.load(file)
+
+          manifest["version"] = version
+          manifest.setdefault("notes", "See the assets to download this version and install.")
+          platforms = manifest.setdefault("platforms", {})
+
+          for target in ("android-arm64", "android-arm", "android-x86", "android-x86_64"):
+              platforms[target] = {
+                  "signature": "",
+                  "url": f"{base_url}/{app_name}-{version}-{target}.apk",
+              }
+
+          with open(manifest_path, "w", encoding="utf-8") as file:
+              json.dump(manifest, file, indent=2)
+              file.write("\n")
+          PY
+
+          gh release upload "$TAG" "$MANIFEST" --clobber

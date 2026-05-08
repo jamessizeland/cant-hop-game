@@ -153,3 +153,47 @@ jobs:
             ./src-tauri/gen/android/app/build/outputs/apk/arm/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm.apk
             ./src-tauri/gen/android/app/build/outputs/apk/x86/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-x86.apk
             ./src-tauri/gen/android/app/build/outputs/apk/x86_64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-x86_64.apk
+
+      - name: Add Android entries to updater manifest
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          VERSION: ${{ steps.app-version.outputs.version_string }}
+        run: |
+          TAG="app-v${VERSION}"
+          MANIFEST="$RUNNER_TEMP/latest.json"
+          MANIFEST_URL="https://github.com/jamessizeland/cant-hop-game/releases/download/${TAG}/latest.json"
+          export MANIFEST
+
+          if ! curl -fsSL "$MANIFEST_URL" -o "$MANIFEST"; then
+            printf '{"version":"%s","notes":"See the assets to download this version and install.","platforms":{}}\n' "$VERSION" > "$MANIFEST"
+          fi
+
+          python3 - <<'PY'
+          import json
+          import os
+
+          manifest_path = os.environ["MANIFEST"]
+          version = os.environ["VERSION"]
+          tag = f"app-v{version}"
+          app_name = os.environ["APP_NAME"]
+          base_url = f"https://github.com/jamessizeland/cant-hop-game/releases/download/{tag}"
+
+          with open(manifest_path, "r", encoding="utf-8") as file:
+              manifest = json.load(file)
+
+          manifest["version"] = version
+          manifest.setdefault("notes", "See the assets to download this version and install.")
+          platforms = manifest.setdefault("platforms", {})
+
+          for target in ("android-arm64", "android-arm", "android-x86", "android-x86_64"):
+              platforms[target] = {
+                  "signature": "",
+                  "url": f"{base_url}/{app_name}-{version}-{target}.apk",
+              }
+
+          with open(manifest_path, "w", encoding="utf-8") as file:
+              json.dump(manifest, file, indent=2)
+              file.write("\n")
+          PY
+
+          gh release upload "$TAG" "$MANIFEST" --clobber
