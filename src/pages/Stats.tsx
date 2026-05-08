@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { IoIosArrowBack } from "react-icons/io";
 import { getCareerStatistics, resetAchievements } from "@/services/ipc";
 import { AchievementKind, CareerStats } from "@/types";
 import Modal from "@/components/elements/modal";
@@ -158,7 +160,15 @@ export function StatsPage() {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
         <header>
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
+              <Link
+                to="/settings"
+                className="btn btn-sm btn-outline mb-2 px-2"
+                aria-label="Back to settings"
+              >
+                <IoIosArrowBack />
+                Back
+              </Link>
               <h1 className="text-3xl font-bold">Statistics</h1>
               <p className="mt-1 text-sm opacity-75">
                 Device-wide totals for human players on this device.

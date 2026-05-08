@@ -2,7 +2,7 @@
 
 import PlayerForm from "@/components/elements/form";
 import { useEffect, useState } from "react";
-import { MdDataExploration } from "react-icons/md";
+import { LiaAwardSolid } from "react-icons/lia";
 import { Link } from "react-router-dom";
 import { getGameState, getName } from "@/services/ipc";
 
@@ -30,11 +30,11 @@ export function SettingsPage() {
         <h1 className="m-2 text-2xl font-bold uppercase">Settings</h1>
         <Link
           to="/stats"
-          className="btn btn-square btn-ghost absolute right-4 top-2"
+          className="btn btn-square btn-ghost absolute right-4 top-2 border-2 border-gray-300 rounded"
           title="Career statistics"
           aria-label="Career statistics"
         >
-          <MdDataExploration className="text-2xl" />
+        <LiaAwardSolid className="text-2xl" />
         </Link>
       </div>
       <PlayerForm first={names[0]} second={names[1]} />
