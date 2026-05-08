@@ -1,5 +1,6 @@
 /** This file defines a simple splash screen component for a web application. */
 
+import { AppUpdatePrompt } from "@/components/AppUpdatePrompt";
 import Footer from "@/components/Layout/footer";
 import { motion } from "motion/react";
 
@@ -30,6 +31,7 @@ export const SplashPage = () => {
       initial="hidden"
       animate="visible"
     >
+      <AppUpdatePrompt />
       <div className="transform flex flex-col items-center justify-center">
         <motion.h1
           variants={fadeUpVariants}
