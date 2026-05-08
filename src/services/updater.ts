@@ -9,10 +9,6 @@ import { notifyClickableInfo, notifyProgress } from "./notifications";
 
 let updateCheckStarted = false;
 
-const LATEST_RELEASE_URL =
-  "https://github.com/jamessizeland/cant-hop-game/releases/latest";
-const LATEST_UPDATE_JSON_URL =
-  "https://github.com/jamessizeland/cant-hop-game/releases/latest/download/latest.json";
 const LATEST_RELEASE_API_URL =
   "https://api.github.com/repos/jamessizeland/cant-hop-game/releases/latest";
 
@@ -48,16 +44,6 @@ interface DownloadProgress {
 interface InstallPackageResponse {
   success: boolean;
   error?: string;
-}
-
-interface AndroidUpdateManifest {
-  version?: string;
-  pub_date?: string;
-  date?: string;
-  notes?: string;
-  body?: string;
-  platforms?: Record<string, { url?: string; signature?: string }>;
-  url?: string;
 }
 
 interface GitHubReleaseAsset {
@@ -97,30 +83,6 @@ const downloadFile = (
     filePath,
     onProgress: channel,
   });
-};
-
-const fetchText = (url: string): Promise<string> => invoke("fetch_text", { url });
-
-const updateDownloadUrl = (
-  rawJson: Record<string, unknown>,
-  target: string
-): string => {
-  const platforms = rawJson.platforms;
-  if (platforms && typeof platforms === "object") {
-    const platformMap = platforms as Record<string, unknown>;
-    const platformEntry = platformMap[target] ?? platformMap.android;
-    if (
-      platformEntry &&
-      typeof platformEntry === "object" &&
-      "url" in platformEntry
-    ) {
-      const url = (platformEntry as Record<string, unknown>).url;
-      if (typeof url === "string") return url;
-    }
-  }
-
-  const url = rawJson.url;
-  return typeof url === "string" ? url : LATEST_RELEASE_URL;
 };
 
 const versionParts = (version: string): number[] =>
@@ -177,9 +139,12 @@ const checkAndroidReleaseAsset = async (
   target: string,
   currentVersion: string
 ): Promise<AndroidUpdate | null> => {
-  const release = JSON.parse(
-    await fetchText(LATEST_RELEASE_API_URL)
-  ) as GitHubRelease;
+  const response = await fetch(LATEST_RELEASE_API_URL, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`GitHub release API returned ${response.status}`);
+  }
+
+  const release = (await response.json()) as GitHubRelease;
   const version = releaseVersion(release);
   if (!version || !isNewerVersion(version, currentVersion)) return null;
 
@@ -199,29 +164,7 @@ const checkAndroidReleaseAsset = async (
 const checkAndroidUpdate = async (
   target: string
 ): Promise<AndroidUpdate | null> => {
-  const [currentVersion, manifestText] = await Promise.all([
-    getVersion(),
-    fetchText(LATEST_UPDATE_JSON_URL).catch(() => null),
-  ]);
-
-  if (manifestText) {
-    const manifest = JSON.parse(manifestText) as AndroidUpdateManifest;
-    if (manifest.version && isNewerVersion(manifest.version, currentVersion)) {
-      const downloadUrl = updateDownloadUrl(
-        manifest as Record<string, unknown>,
-        target
-      );
-      if (downloadUrl !== LATEST_RELEASE_URL) {
-        return {
-          version: manifest.version,
-          url: downloadUrl,
-          notes: manifest.notes ?? manifest.body,
-          date: manifest.pub_date ?? manifest.date,
-        };
-      }
-    }
-  }
-
+  const currentVersion = await getVersion();
   return checkAndroidReleaseAsset(target, currentVersion);
 };
 
