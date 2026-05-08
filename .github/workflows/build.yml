@@ -83,14 +83,77 @@ jobs:
           includeUpdaterJson: true
           args: ${{ matrix.args }}
 
-  add-android-updater-entries:
+  publish-android:
     if: ${{ github.event.pull_request.merged && github.repository_owner == 'jamessizeland' }}
     needs: publish-tauri
     permissions:
       contents: write
     runs-on: ubuntu-latest
+    env:
+      APP_NAME: cant-hop
     steps:
       - uses: actions/checkout@v4
+
+      - name: setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
+
+      - name: Cache NDK
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/ndk/27.0.11902837
+          key: ndk-${{ runner.os }}-27.0.11902837
+
+      - name: Setup Android SDK and NDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 12266719
+
+      - name: Install NDK
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: sdkmanager "ndk;27.0.11902837"
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+          key: android
+          cache-on-failure: true
+
+      - name: setup Android signing
+        run: |
+          cd src-tauri/gen/android
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > keystore.properties
+          echo "password=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
+          base64 -d <<< "${{ secrets.ANDROID_KEY_BASE64 }}" > $RUNNER_TEMP/keystore.jks
+          echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
+          cd ../../..
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Get Tauri App Version
         id: app-version
@@ -102,9 +165,59 @@ jobs:
           fi
           echo "version_string=$VERSION_STRING" >> "$GITHUB_OUTPUT"
 
-      - name: Add Android entries to updater manifest
+      - name: Build Android APKs
+        run: bun tauri android build --apk --split-per-abi -v
         env:
-          APP_NAME: cant-hop
+          NDK_HOME: /usr/local/lib/android/sdk/ndk/27.0.11902837
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Rename and sign APK files
+        env:
+          VERSION: ${{ steps.app-version.outputs.version_string }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          declare -A APK_OUTPUTS=(
+            [arm64]="android-arm64"
+            [arm]="android-arm"
+            [x86]="android-x86"
+            [x86_64]="android-x86_64"
+          )
+
+          for ABI in "${!APK_OUTPUTS[@]}"; do
+            SRC="./src-tauri/gen/android/app/build/outputs/apk/${ABI}/release/app-${ABI}-release.apk"
+            DEST="./src-tauri/gen/android/app/build/outputs/apk/${ABI}/release/${APP_NAME}-${VERSION}-${APK_OUTPUTS[$ABI]}.apk"
+            if [ ! -f "$SRC" ]; then
+              echo "Expected APK not found: $SRC"
+              exit 1
+            fi
+            mv "$SRC" "$DEST"
+            bun tauri signer sign "$DEST"
+          done
+
+      - name: Publish Android APKs
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        with:
+          tag_name: app-v${{ steps.app-version.outputs.version_string }}
+          files: |
+            ./src-tauri/gen/android/app/build/outputs/apk/arm64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm64.apk
+            ./src-tauri/gen/android/app/build/outputs/apk/arm64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm64.apk.sig
+            ./src-tauri/gen/android/app/build/outputs/apk/arm/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm.apk
+            ./src-tauri/gen/android/app/build/outputs/apk/arm/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-arm.apk.sig
+            ./src-tauri/gen/android/app/build/outputs/apk/x86/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-x86.apk
+            ./src-tauri/gen/android/app/build/outputs/apk/x86/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-x86.apk.sig
+            ./src-tauri/gen/android/app/build/outputs/apk/x86_64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-x86_64.apk
+            ./src-tauri/gen/android/app/build/outputs/apk/x86_64/release/${{env.APP_NAME}}-${{ steps.app-version.outputs.version_string }}-android-x86_64.apk.sig
+
+      - name: Add signed Android entries to updater manifest
+        env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           VERSION: ${{ steps.app-version.outputs.version_string }}
         run: |
@@ -126,6 +239,12 @@ jobs:
           tag = f"app-v{version}"
           app_name = os.environ["APP_NAME"]
           base_url = f"https://github.com/jamessizeland/cant-hop-game/releases/download/{tag}"
+          apk_dirs = {
+              "android-arm64": "arm64",
+              "android-arm": "arm",
+              "android-x86": "x86",
+              "android-x86_64": "x86_64",
+          }
 
           with open(manifest_path, "r", encoding="utf-8") as file:
               manifest = json.load(file)
@@ -134,10 +253,17 @@ jobs:
           manifest.setdefault("notes", "See the assets to download this version and install.")
           platforms = manifest.setdefault("platforms", {})
 
-          for target in ("android-arm64", "android-arm", "android-x86", "android-x86_64"):
+          for target, apk_dir in apk_dirs.items():
+              apk_name = f"{app_name}-{version}-{target}.apk"
+              signature_path = (
+                  f"src-tauri/gen/android/app/build/outputs/apk/{apk_dir}/"
+                  f"release/{apk_name}.sig"
+              )
+              with open(signature_path, "r", encoding="utf-8") as file:
+                  signature = file.read().strip()
               platforms[target] = {
-                  "signature": "",
-                  "url": f"{base_url}/{app_name}-{version}-{target}.apk",
+                  "signature": signature,
+                  "url": f"{base_url}/{apk_name}",
               }
 
           with open(manifest_path, "w", encoding="utf-8") as file:

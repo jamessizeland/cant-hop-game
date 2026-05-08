@@ -9,8 +9,8 @@ import { notifyClickableInfo, notifyProgress } from "./notifications";
 
 let updateCheckStarted = false;
 
-const LATEST_RELEASE_API_URL =
-  "https://api.github.com/repos/jamessizeland/cant-hop-game/releases/latest";
+const LATEST_RELEASE_MANIFEST_URL =
+  "https://github.com/jamessizeland/cant-hop-game/releases/latest/download/latest.json";
 
 const isTauriRuntime = (): boolean => "__TAURI_INTERNALS__" in window;
 
@@ -46,17 +46,16 @@ interface InstallPackageResponse {
   error?: string;
 }
 
-interface GitHubReleaseAsset {
-  name: string;
-  browser_download_url: string;
+interface UpdateManifestPlatform {
+  signature?: string;
+  url?: string;
 }
 
-interface GitHubRelease {
-  tag_name?: string;
-  name?: string;
-  body?: string;
-  published_at?: string;
-  assets?: GitHubReleaseAsset[];
+interface UpdateManifest {
+  version?: string;
+  notes?: string;
+  pub_date?: string;
+  platforms?: Record<string, UpdateManifestPlatform>;
 }
 
 interface AndroidUpdate {
@@ -107,57 +106,30 @@ const isNewerVersion = (remoteVersion: string, currentVersion: string) => {
   return false;
 };
 
-const releaseVersion = (release: GitHubRelease): string | null => {
-  const rawVersion = release.tag_name ?? release.name ?? "";
-  const match = rawVersion.match(/v?(\d+\.\d+\.\d+(?:[-+][\w.-]+)?)/);
-  return match?.[1] ?? null;
-};
-
-const androidAssetUrl = (
-  release: GitHubRelease,
-  target: string
-): string | null => {
-  const assets = release.assets ?? [];
-  const matchingAsset = assets.find(
-    (asset) => asset.name.endsWith(".apk") && asset.name.includes(target)
-  );
-  const fallbackAsset = assets.find(
-    (asset) =>
-      asset.name.endsWith(".apk") &&
-      (asset.name.includes("android-universal") ||
-        asset.name.includes("universal"))
-  );
-
-  return (
-    matchingAsset?.browser_download_url ??
-    fallbackAsset?.browser_download_url ??
-    null
-  );
-};
-
 const checkAndroidReleaseAsset = async (
   target: string,
   currentVersion: string
 ): Promise<AndroidUpdate | null> => {
-  const response = await fetch(LATEST_RELEASE_API_URL, { cache: "no-store" });
+  const response = await fetch(LATEST_RELEASE_MANIFEST_URL, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`GitHub release API returned ${response.status}`);
+    throw new Error(`Updater manifest returned ${response.status}`);
   }
 
-  const release = (await response.json()) as GitHubRelease;
-  const version = releaseVersion(release);
+  const manifest = (await response.json()) as UpdateManifest;
+  const version = manifest.version?.replace(/^v/i, "");
   if (!version || !isNewerVersion(version, currentVersion)) return null;
 
-  const url = androidAssetUrl(release, target);
-  if (!url) {
-    throw new Error(`No Android APK release asset found for ${target}`);
+  const platform =
+    manifest.platforms?.[target] ?? manifest.platforms?.["android-universal"];
+  if (!platform?.url) {
+    throw new Error(`No Android APK updater entry found for ${target}`);
   }
 
   return {
     version,
-    url,
-    notes: release.body,
-    date: release.published_at,
+    url: platform.url,
+    notes: manifest.notes,
+    date: manifest.pub_date,
   };
 };
 
