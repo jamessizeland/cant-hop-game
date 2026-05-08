@@ -7,12 +7,22 @@ plugins {
     id("rust")
 }
 
-val tauriProperties = Properties().apply {
-    val propFile = file("tauri.properties")
-    if (propFile.exists()) {
-        propFile.inputStream().use { load(it) }
+val cargoVersion = Regex("""(?m)^version\s*=\s*"([^"]+)"""")
+    .find(rootProject.file("../../Cargo.toml").readText())
+    ?.groupValues
+    ?.get(1)
+    ?: "1.0"
+
+val cargoVersionCode = cargoVersion
+    .substringBefore("-")
+    .split(".")
+    .map { it.toIntOrNull() ?: 0 }
+    .let { parts ->
+        val major = parts.getOrElse(0) { 0 }
+        val minor = parts.getOrElse(1) { 0 }
+        val patch = parts.getOrElse(2) { 0 }
+        major * 1_000_000 + minor * 1_000 + patch
     }
-}
 
 android {
     compileSdk = 34
@@ -22,8 +32,8 @@ android {
         applicationId = "com.cant_hop.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
-        versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+        versionCode = cargoVersionCode
+        versionName = cargoVersion
     }
     signingConfigs {
         create("release") {
