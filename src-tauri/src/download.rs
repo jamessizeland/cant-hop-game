@@ -2,7 +2,7 @@ use futures_util::TryStreamExt;
 use serde::Serialize;
 use tauri::{command, ipc::Channel};
 use tokio::{
-    fs::File,
+    fs::{File, create_dir_all},
     io::{AsyncWriteExt, BufWriter},
 };
 
@@ -19,8 +19,15 @@ pub async fn download_file(
     file_path: &str,
     on_progress: Channel<DownloadProgress>,
 ) -> Result<(), String> {
+    if let Some(parent) = std::path::Path::new(file_path).parent() {
+        create_dir_all(parent)
+            .await
+            .map_err(|error| error.to_string())?;
+    }
+
     let response = reqwest::Client::new()
         .get(url)
+        .header(reqwest::header::USER_AGENT, "cant-hop-updater")
         .send()
         .await
         .map_err(|error| error.to_string())?;
@@ -48,4 +55,20 @@ pub async fn download_file(
 
     file.flush().await.map_err(|error| error.to_string())?;
     Ok(())
+}
+
+#[command]
+pub async fn fetch_text(url: &str) -> Result<String, String> {
+    let response = reqwest::Client::new()
+        .get(url)
+        .header(reqwest::header::USER_AGENT, "cant-hop-updater")
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
+
+    if !response.status().is_success() {
+        return Err(format!("Request failed with status {}", response.status()));
+    }
+
+    response.text().await.map_err(|error| error.to_string())
 }
