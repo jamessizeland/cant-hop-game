@@ -1,19 +1,15 @@
 import { useEffect, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import Modal from "@/components/elements/modal";
 import {
-  AppUpdateProgress,
+  APP_RELEASES_URL,
   AvailableAppUpdate,
-  formatBytes,
   getAvailableAppUpdate,
 } from "@/services/updater";
 
 export function AppUpdatePrompt() {
   const [update, setUpdate] = useState<AvailableAppUpdate | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [isInstalling, setIsInstalling] = useState(false);
-  const [progress, setProgress] = useState<AppUpdateProgress>({
-    status: "Ready to download.",
-  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,7 +17,6 @@ export function AppUpdatePrompt() {
       .then((availableUpdate) => {
         if (availableUpdate) {
           setUpdate(availableUpdate);
-          setProgress({ status: "Ready to download." });
         }
       })
       .catch((reason) => {
@@ -31,22 +26,13 @@ export function AppUpdatePrompt() {
 
   if (!update) return null;
 
-  const percentage =
-    progress.total && progress.downloaded
-      ? Math.min(100, Math.round((progress.downloaded / progress.total) * 100))
-      : 0;
-
-  async function handleInstall() {
-    if (!update) return;
-
-    setIsInstalling(true);
+  async function handleOpenReleases() {
     setError(null);
     try {
-      await update.install(setProgress);
+      await openUrl(APP_RELEASES_URL);
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : String(reason);
       setError(message);
-      setIsInstalling(false);
     }
   }
 
@@ -60,47 +46,30 @@ export function AppUpdatePrompt() {
       </button>
       <Modal
         isOpen={isOpen}
-        onClose={() => {
-          if (!isInstalling) setIsOpen(false);
-        }}
+        onClose={() => setIsOpen(false)}
         title={`Update to ${update.version}?`}
         actions={
           <>
             <button
               className="btn btn-ghost"
               onClick={() => setIsOpen(false)}
-              disabled={isInstalling}
             >
               Later
             </button>
             <button
               className="btn btn-primary"
-              onClick={handleInstall}
-              disabled={isInstalling}
+              onClick={handleOpenReleases}
             >
-              Download
+              Open Releases
             </button>
           </>
         }
       >
         <div className="flex flex-col gap-3 text-sm max-h-[60vh] overflow-hidden">
           {update.notes ? <p className="opacity-80 overflow-auto">{update.notes}</p> : null}
-          <div>
-            <progress
-              className="progress progress-primary w-full"
-              value={percentage}
-              max="100"
-            />
-            <div className="mt-2 flex items-center justify-between gap-3 opacity-75">
-              <span>{progress.status}</span>
-              {progress.total && progress.downloaded ? (
-                <span className="shrink-0">
-                  {formatBytes(progress.downloaded)} /{" "}
-                  {formatBytes(progress.total)}
-                </span>
-              ) : null}
-            </div>
-          </div>
+          <p className="opacity-75">
+            Download the latest build from GitHub Releases to update manually.
+          </p>
           {error ? <p className="text-error">{error}</p> : null}
         </div>
       </Modal>
