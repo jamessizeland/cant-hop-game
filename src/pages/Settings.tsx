@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { LiaAwardSolid } from "react-icons/lia";
 import { Link } from "react-router-dom";
 import { getGameState, getName } from "@/services/ipc";
-import { checkForAppUpdate, diagnoseAppUpdate } from "@/services/updater";
 import { MdClose } from "react-icons/md";
 
 export function SettingsPage() {
@@ -46,7 +45,7 @@ export function SettingsPage() {
           <MdClose />
         </Link>
       </div>
-      <div className="flex gap-2">
+      {/* <div className="flex gap-2">
         <button className="btn btn-sm btn-outline" onClick={diagnoseAppUpdate}>
           Update Diagnostics
         </button>
@@ -56,7 +55,7 @@ export function SettingsPage() {
         >
           Check Update
         </button>
-      </div>
+      </div> */}
       <PlayerForm first={names[0]} second={names[1]} />
       {resume ? (
         <button

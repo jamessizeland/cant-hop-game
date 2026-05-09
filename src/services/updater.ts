@@ -11,13 +11,14 @@ import {
   notifyClickableInfo,
   notifyError,
   notifyInfo,
-  notifyProgress,
 } from "./notifications";
 
 let updateCheckStarted = false;
 
 const LATEST_RELEASE_MANIFEST_URL =
   "https://github.com/jamessizeland/cant-hop-game/releases/latest/download/latest.json";
+export const APP_RELEASES_URL =
+  "https://github.com/jamessizeland/cant-hop-game/releases/latest";
 
 const isTauriRuntime = (): boolean => "__TAURI_INTERNALS__" in window;
 
@@ -365,18 +366,18 @@ export async function getAvailableAppUpdate(
   };
 }
 
-/** Check GitHub Releases for a signed updater bundle and install it when requested. */
+/** Check GitHub Releases for an update and open the manual download page. */
 export async function checkForAppUpdate(force = false): Promise<void> {
   try {
     const update = await getAvailableAppUpdate(force);
     if (!update) return;
 
-    const progress = notifyProgress(
-      `Updating Can't Hop to ${update.version}...`,
-      "appUpdate"
+    notifyInfo(
+      `Can't Hop ${update.version} is available. Opening GitHub Releases...`,
+      "appUpdate",
+      8000
     );
-    await update.install((event) => progress.update(event.status));
-    progress.success("Update flow started.", 8000);
+    await openUrl(APP_RELEASES_URL);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (force) {

@@ -294,7 +294,7 @@ jobs:
       APP_NAME: cant-hop
       GH_TOKEN: ${{ secrets.GH_PAT }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Get Tauri App Version
         id: app-version
