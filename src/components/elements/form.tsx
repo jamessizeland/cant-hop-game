@@ -2,11 +2,13 @@
 import { useForm } from "@tanstack/react-form";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { GiFrogPrince } from "react-icons/gi";
 import { getName, startGame } from "@/services/ipc";
 import { PlayerColors, PlayerMode, SettingsState } from "@/types";
 
 function PlayerForm({ first, second }: { first: string; second: string }) {
+  const navigate = useNavigate();
   // used for name input field on focus and blur
   const [tempName, setTempName] = useState<string>("");
 
@@ -36,7 +38,7 @@ function PlayerForm({ first, second }: { first: string; second: string }) {
           alert(JSON.stringify(values.value));
           return;
         }
-        window.location.href = "/game";
+        navigate("/game");
       });
     },
   });

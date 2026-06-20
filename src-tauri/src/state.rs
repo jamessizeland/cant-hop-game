@@ -34,6 +34,12 @@ pub struct SettingsState {
     win_cols: usize,
 }
 
+impl SettingsState {
+    pub fn win_cols(&self) -> usize {
+        self.win_cols
+    }
+}
+
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct DiceResult {
     pub dice: [usize; 4],

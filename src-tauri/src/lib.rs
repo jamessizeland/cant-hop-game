@@ -38,7 +38,9 @@ pub fn run() {
             ipc::get_career_statistics,
             ipc::reset_achievements,
             ipc::ai::check_continue,
+            ipc::ai::check_continue_explained,
             ipc::ai::choose_column,
+            ipc::ai::choose_column_explained,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

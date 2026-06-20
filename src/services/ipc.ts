@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
   DiceResult,
+  AiChoiceDecision,
+  AiContinueDecision,
   CareerStats,
   GameState,
   PlayerChoice,
@@ -113,8 +115,19 @@ export async function aiCheckContinue(): Promise<boolean> {
   return await invoke<boolean>("check_continue");
 }
 
+/** Check if the AI player should hop or stop, with a short UI-facing reason. */
+export async function aiCheckContinueExplained(): Promise<AiContinueDecision> {
+  return await invoke<AiContinueDecision>("check_continue_explained");
+}
+
 export async function aiChooseColumn(
   options: DiceResult
 ): Promise<PlayerChoice> {
   return await invoke<PlayerChoice>("choose_column", { options });
+}
+
+export async function aiChooseColumnExplained(
+  options: DiceResult
+): Promise<AiChoiceDecision> {
+  return await invoke<AiChoiceDecision>("choose_column_explained", { options });
 }

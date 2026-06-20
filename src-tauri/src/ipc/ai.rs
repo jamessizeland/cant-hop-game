@@ -1,8 +1,24 @@
-use std::{cmp::Ordering, collections::HashSet};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+};
 
 use crate::state::{
     AppContext, Choice, Column, ColumnID, DiceResult, PlayerMode, calculate_croak_chance,
 };
+use serde::Serialize;
+
+#[derive(Clone, Serialize)]
+pub struct AiContinueDecision {
+    pub should_continue: bool,
+    pub thought: String,
+}
+
+#[derive(Clone, Serialize)]
+pub struct AiChoiceDecision {
+    pub choice: Choice,
+    pub thought: String,
+}
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone, Copy)]
 struct EvaluateColumn {
@@ -43,6 +59,16 @@ impl EvaluateColumn {
 #[tauri::command]
 /// Decide bot action, hop or stop
 pub fn check_continue(state: tauri::State<AppContext>) -> bool {
+    decide_continue(&state).should_continue
+}
+
+#[tauri::command]
+/// Decide bot action and explain the thinking for the UI.
+pub fn check_continue_explained(state: tauri::State<AppContext>) -> AiContinueDecision {
+    decide_continue(&state)
+}
+
+fn decide_continue(state: &tauri::State<AppContext>) -> AiContinueDecision {
     let game_state = state.game.lock().unwrap();
     let player = &game_state.settings.players[game_state.current_player];
     let name = &player.name;
@@ -53,28 +79,54 @@ pub fn check_continue(state: tauri::State<AppContext>) -> bool {
     let evaluation =
         EvaluateColumn::evaluate(game_state.columns, &active_cols, game_state.current_player);
     if evaluation.iter().any(|col| col.topped) {
-        return false; // bank this progress
+        return AiContinueDecision {
+            should_continue: false,
+            thought: continue_finished_column_thought(player.mode),
+        };
     };
     let hops = game_state.hops;
-    // Define how much the threshold decreases per hop made in the current turn
-    const RISK_AVERSION_PER_HOP: f64 = 0.05; // e.g., 5% more cautious per hop
-    // Define a minimum threshold to prevent it from becoming zero or negative too easily
-    const MINIMUM_RISK_THRESHOLD: f64 = 0.05; // e.g., always willing to take at least a 5% risk
-
     let croak_chance = calculate_croak_chance(&active_cols, &inactive_cols);
+
+    if active_cols.is_empty() || hops == 0 {
+        return AiContinueDecision {
+            should_continue: true,
+            thought: continue_fresh_turn_thought(player.mode),
+        };
+    }
+
+    let current_player = game_state.current_player;
+    let banked_value: f64 = evaluation
+        .iter()
+        .map(|col| {
+            let urgency = if col.banked_distance <= col.risked + 1 {
+                1.8
+            } else {
+                1.0
+            };
+            col.risked as f64 * urgency
+        })
+        .sum();
+    let risked_hops: usize = evaluation.iter().map(|col| col.risked).sum();
+    let threat = opponent_threat(&game_state.columns, current_player);
+    let columns_needed = game_state
+        .settings
+        .win_cols()
+        .saturating_sub(player.won_cols.len());
+
     let base_risk_threshold = match player.mode {
-        // Safe bot avoids risks. Stops if bust chance is relatively low.
-        PlayerMode::Safe => 0.35, // Base threshold for Safe bot
-        // Normal bot takes calculated risks. Standard threshold.
-        PlayerMode::Normal => 0.50, // Base threshold for Normal bot
-        // Risky bot pushes their luck. High tolerance for busting.
-        PlayerMode::Risky => 0.65, // Base threshold for Risky bot
+        PlayerMode::Safe => 0.30,
+        PlayerMode::Normal => 0.45,
+        PlayerMode::Risky => 0.60,
         PlayerMode::Human => panic!("Shouldn't be called for a human player"),
     };
 
-    // Adjust threshold based on hops: subtract aversion factor for each hop made
+    let progress_pressure = (banked_value * 0.035).min(0.24);
+    let chase_pressure = if threat >= 2 { 0.08 } else { 0.0 };
+    let finish_pressure = if columns_needed <= 1 { 0.06 } else { 0.0 };
+    let fatigue = (hops.saturating_sub(1) as f64 * 0.035).min(0.16);
     let adjusted_risk_threshold =
-        (base_risk_threshold - (hops as f64 * RISK_AVERSION_PER_HOP)).max(MINIMUM_RISK_THRESHOLD);
+        (base_risk_threshold + chase_pressure + finish_pressure - progress_pressure - fatigue)
+            .clamp(0.08, 0.82);
 
     let should_continue = croak_chance < adjusted_risk_threshold;
     println!(
@@ -82,12 +134,36 @@ pub fn check_continue(state: tauri::State<AppContext>) -> bool {
         name,
         if should_continue { "hop" } else { "stop" }
     );
-    should_continue
+    AiContinueDecision {
+        should_continue,
+        thought: continue_thought(
+            should_continue,
+            croak_chance,
+            adjusted_risk_threshold,
+            risked_hops,
+            threat,
+            columns_needed,
+            player.mode,
+        ),
+    }
 }
 
 #[tauri::command]
 /// Decide which column(s) to select
 pub fn choose_column(options: DiceResult, state: tauri::State<AppContext>) -> Choice {
+    decide_column(options, &state).choice
+}
+
+#[tauri::command]
+/// Decide which column(s) to select and explain the thinking for the UI.
+pub fn choose_column_explained(
+    options: DiceResult,
+    state: tauri::State<AppContext>,
+) -> AiChoiceDecision {
+    decide_column(options, &state)
+}
+
+fn decide_column(options: DiceResult, state: &tauri::State<AppContext>) -> AiChoiceDecision {
     let game_state = state.game.lock().unwrap();
     let player_index = game_state.current_player;
     let name = &game_state.settings.players[player_index].name;
@@ -99,37 +175,25 @@ pub fn choose_column(options: DiceResult, state: tauri::State<AppContext>) -> Ch
     let choices: HashSet<(usize, Option<usize>)> = options.choices;
     let active_cols = &game_state.get_selected();
     let columns = game_state.columns;
-    let mut attractiveness: Vec<(f64, Choice)> = choices
+    let mut attractiveness: Vec<(f64, Choice, String)> = choices
         .iter()
         .map(|&choice| {
-            // convert number to index, as the backend uses 0-based indexing and the user is
-            // choosing a 2d6 number, so we need to subtract 2 from the number.
-            let indexed_choice = (choice.0 - 2, choice.1.map(|x| x - 2));
-            let value = match indexed_choice {
-                (first, None) => {
-                    let Some(column) = columns.get(first) else {
-                        panic!("Invalid index {}", first);
-                    };
-                    column.rate(active_cols, player_index, &opponent_indices)
-                }
-                (first, Some(second)) => {
-                    // Sum the attractiveness of both columns for pairs
-                    let Some(column1) = columns.get(first) else {
-                        panic!("Invalid index {}", first);
-                    };
-                    let Some(column2) = columns.get(second) else {
-                        panic!("Invalid index {}", second);
-                    };
-                    let rating = column1.rate(active_cols, player_index, &opponent_indices)
-                        + column2.rate(active_cols, player_index, &opponent_indices);
-                    match first == second {
-                        // weight higher if the two values are the same.
-                        true => rating * 1.5,
-                        false => rating,
-                    }
-                }
-            };
-            (value, choice)
+            let value = score_choice(
+                choice,
+                &columns,
+                active_cols,
+                player_index,
+                &opponent_indices,
+            );
+            let thought = choice_thought(
+                choice,
+                &columns,
+                active_cols,
+                player_index,
+                &opponent_indices,
+                game_state.settings.players[player_index].mode,
+            );
+            (value, choice, thought)
         })
         .collect();
     // Sort descending: higher score is better
@@ -138,9 +202,12 @@ pub fn choose_column(options: DiceResult, state: tauri::State<AppContext>) -> Ch
     // Choose the best option
     // .first() gives the highest score after descending sort.
     // .unwrap() is safe because options.choices is guaranteed non-empty by game logic.
-    let choice = attractiveness.first().unwrap().1;
+    let (_, choice, thought) = attractiveness.first().unwrap();
     println!("bot: {} chose {:?}", name, choice);
-    choice
+    AiChoiceDecision {
+        choice: *choice,
+        thought: thought.clone(),
+    }
 }
 
 impl Column {
@@ -169,7 +236,7 @@ impl Column {
 
         // 1. Active Column Bonus: Prioritize using columns already started this turn
         //    if we haven't picked 3 unique columns yet.
-        if active_cols.len() < 3 && active_cols.contains(&self.col) {
+        if active_cols.contains(&self.col) {
             score += WEIGHT_ACTIVE;
         }
 
@@ -207,5 +274,257 @@ impl Column {
 
         // Ensure score is non-negative
         score.max(0.0)
+    }
+}
+
+fn score_choice(
+    choice: Choice,
+    columns: &[Column; 11],
+    active_cols: &HashSet<ColumnID>,
+    player_index: usize,
+    opponent_indices: &[usize],
+) -> f64 {
+    let mut score = 0.0;
+    let mut simulated_active = active_cols.clone();
+    let mut column_counts: HashMap<ColumnID, usize> = HashMap::new();
+
+    for col_id in choice_columns(choice) {
+        *column_counts.entry(col_id).or_default() += 1;
+    }
+
+    for (col_id, steps_added) in column_counts {
+        let Some(column) = columns.get(col_id - 2) else {
+            panic!("Invalid column id {}", col_id);
+        };
+        score +=
+            column.rate(&simulated_active, player_index, opponent_indices) * steps_added as f64;
+        score += column_context_score(column, steps_added, player_index, opponent_indices);
+        simulated_active.insert(col_id);
+    }
+
+    let new_columns = simulated_active.len().saturating_sub(active_cols.len());
+    if active_cols.len() >= 2 {
+        score -= new_columns as f64 * 2.4;
+    }
+
+    let unique_cols = choice_columns(choice)
+        .into_iter()
+        .collect::<HashSet<_>>()
+        .len();
+    if unique_cols == 1 && choice.1.is_some() {
+        score += 3.0;
+    }
+
+    score
+}
+
+fn column_context_score(
+    column: &Column,
+    steps_added: usize,
+    player_index: usize,
+    opponent_indices: &[usize],
+) -> f64 {
+    let current = column.hops[player_index] + column.risked;
+    let after = (current + steps_added).min(column.height);
+    let distance_after = column.height.saturating_sub(after);
+    let mut score = 0.0;
+
+    if distance_after == 0 {
+        score += 14.0;
+    } else if distance_after <= 2 {
+        score += 5.0 / distance_after as f64;
+    }
+
+    if opponent_indices
+        .iter()
+        .any(|&idx| column.height.saturating_sub(column.hops[idx]) <= 1)
+    {
+        score += 4.0;
+    }
+
+    score
+}
+
+fn choice_columns(choice: Choice) -> Vec<ColumnID> {
+    match choice {
+        (first, Some(second)) => vec![first, second],
+        (first, None) => vec![first],
+    }
+}
+
+fn opponent_threat(columns: &[Column; 11], player_index: usize) -> usize {
+    columns
+        .iter()
+        .filter(|column| column.locked.is_none())
+        .filter(|column| {
+            column
+                .hops
+                .iter()
+                .enumerate()
+                .any(|(idx, &hops)| idx != player_index && column.height.saturating_sub(hops) <= 2)
+        })
+        .count()
+}
+
+fn continue_thought(
+    should_continue: bool,
+    croak_chance: f64,
+    threshold: f64,
+    risked_hops: usize,
+    threat: usize,
+    columns_needed: usize,
+    mode: PlayerMode,
+) -> String {
+    if should_continue {
+        if threat >= 2 {
+            return match mode {
+                PlayerMode::Safe => {
+                    "The table is getting crowded. One careful hop to stay in it.".to_string()
+                }
+                PlayerMode::Normal => "Rivals are close. I need pressure, not manners.".to_string(),
+                PlayerMode::Risky => {
+                    "They are nearly there. Perfect time to make this uncomfortable.".to_string()
+                }
+                PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+            };
+        }
+        if columns_needed <= 1 {
+            return match mode {
+                PlayerMode::Safe => {
+                    "One column could end it. Even I can be brave for that.".to_string()
+                }
+                PlayerMode::Normal => "A winning lane is open. I am taking the hop.".to_string(),
+                PlayerMode::Risky => {
+                    "This smells like a finish. No lily-pad loitering.".to_string()
+                }
+                PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+            };
+        }
+        if croak_chance > threshold * 0.85 {
+            return match mode {
+                PlayerMode::Safe => "A little wobbly, but the board still says hop.".to_string(),
+                PlayerMode::Normal => "Thin enough to notice, good enough to take.".to_string(),
+                PlayerMode::Risky => "That edge has teeth. I like it.".to_string(),
+                PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+            };
+        }
+        return match mode {
+            PlayerMode::Safe => "Clean enough. One tidy hop, then we reassess.".to_string(),
+            PlayerMode::Normal => "The lanes still look friendly. I hop.".to_string(),
+            PlayerMode::Risky => "Plenty of runway. Send it.".to_string(),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        };
+    }
+
+    if risked_hops >= 4 {
+        return match mode {
+            PlayerMode::Safe => "That is enough unbanked progress for one stomach.".to_string(),
+            PlayerMode::Normal => {
+                "There is real value on the board. I am taking it home.".to_string()
+            }
+            PlayerMode::Risky => "Even I know when a pile is worth pocketing.".to_string(),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        };
+    }
+
+    if croak_chance >= threshold * 1.25 {
+        return match mode {
+            PlayerMode::Safe => "Nope. The pond is making that face. I bank.".to_string(),
+            PlayerMode::Normal => "Too many ways for this to turn ugly. I bank.".to_string(),
+            PlayerMode::Risky => "Tempting, but not heroic. Just messy. I bank.".to_string(),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        };
+    }
+
+    match mode {
+        PlayerMode::Safe => "A modest gain is still a gain. Bank it.".to_string(),
+        PlayerMode::Normal => "Good turn. No need to donate it back.".to_string(),
+        PlayerMode::Risky => "I could push it, but the board has paid enough.".to_string(),
+        PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+    }
+}
+
+fn choice_thought(
+    choice: Choice,
+    columns: &[Column; 11],
+    active_cols: &HashSet<ColumnID>,
+    player_index: usize,
+    opponent_indices: &[usize],
+    mode: PlayerMode,
+) -> String {
+    let cols = choice_columns(choice);
+
+    if cols.iter().any(|&col_id| {
+        let column = &columns[col_id - 2];
+        column.hops[player_index] + column.risked + 1 >= column.height
+    }) {
+        return match mode {
+            PlayerMode::Safe => format!("Column {} reaches the top. Easy bank material.", cols[0]),
+            PlayerMode::Normal => format!("Column {} can top out. That is the line.", cols[0]),
+            PlayerMode::Risky => format!("Column {} is begging to be finished.", cols[0]),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        };
+    }
+
+    if let Some(col_id) = cols.iter().find(|&&col_id| active_cols.contains(&col_id)) {
+        return match mode {
+            PlayerMode::Safe => format!("Column {col_id} is already open. Keep it tidy."),
+            PlayerMode::Normal => format!("Column {col_id} keeps this run focused."),
+            PlayerMode::Risky => format!("Column {col_id} already has momentum. Pile on."),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        };
+    }
+
+    if let Some(col_id) = cols.iter().find(|&&col_id| {
+        let column = &columns[col_id - 2];
+        opponent_indices
+            .iter()
+            .any(|&idx| column.height.saturating_sub(column.hops[idx]) <= 2)
+    }) {
+        return match mode {
+            PlayerMode::Safe => format!("Column {col_id} also keeps a rival honest."),
+            PlayerMode::Normal => format!("Column {col_id} blocks a little and builds a little."),
+            PlayerMode::Risky => format!("Column {col_id} is a nice bit of sabotage."),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        };
+    }
+
+    match choice {
+        (first, Some(second)) if first == second => match mode {
+            PlayerMode::Safe => format!("Double {first}. Concentrated progress, fewer loose ends."),
+            PlayerMode::Normal => format!("Double {first}. Two hops in one lane will do nicely."),
+            PlayerMode::Risky => format!("Double {first}. Now we are talking."),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        },
+        (first, Some(second)) => match mode {
+            PlayerMode::Safe => format!("{first} and {second} spreads the work without drama."),
+            PlayerMode::Normal => format!("{first} and {second} gives this roll the best shape."),
+            PlayerMode::Risky => format!("{first} and {second}. More doors, more trouble."),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        },
+        (first, None) => match mode {
+            PlayerMode::Safe => format!("Column {first} is the neatest single here."),
+            PlayerMode::Normal => format!("Column {first} is the useful single."),
+            PlayerMode::Risky => format!("Column {first}. Small hop, still counts."),
+            PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+        },
+    }
+}
+
+fn continue_finished_column_thought(mode: PlayerMode) -> String {
+    match mode {
+        PlayerMode::Safe => "A finished column is not a suggestion. Bank it.".to_string(),
+        PlayerMode::Normal => "Column topped. Lock it in before the dice get ideas.".to_string(),
+        PlayerMode::Risky => "Top reached. Fine, fine, I will take the shiny thing.".to_string(),
+        PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
+    }
+}
+
+fn continue_fresh_turn_thought(mode: PlayerMode) -> String {
+    match mode {
+        PlayerMode::Safe => "Fresh turn. First hop is free enough.".to_string(),
+        PlayerMode::Normal => "New run, clean board. Let us see the dice.".to_string(),
+        PlayerMode::Risky => "Nothing on the line yet. Wake the dice up.".to_string(),
+        PlayerMode::Human => unreachable!("AI thoughts are not generated for humans"),
     }
 }

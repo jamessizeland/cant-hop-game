@@ -1,6 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { aiCheckContinue, aiChooseColumn } from "@/services/ipc";
-import { notifyError, notifyInfo } from "@/services/notifications";
+import {
+  aiCheckContinueExplained,
+  aiChooseColumnExplained,
+} from "@/services/ipc";
+import { notifyError } from "@/services/notifications";
 import { DiceResult, GameState, Player, PlayerChoice } from "@/types";
 
 interface UseAiTurnProps {
@@ -18,6 +21,7 @@ export type AiAction = "hop" | "stop" | "choose" | "croaked" | null;
 export interface UseAiTurnResult {
   aiAction: AiAction;
   aiTargetChoice: PlayerChoice | null;
+  aiThought: string | null;
 }
 
 export const useAiTurn = ({
@@ -33,6 +37,7 @@ export const useAiTurn = ({
   const [aiTargetChoice, setAiTargetChoice] = useState<PlayerChoice | null>(
     null
   );
+  const [aiThought, setAiThought] = useState<string | null>(null);
   const [isAiActing, setIsAiActing] = useState(false); // Prevent overlapping AI actions
   const decisionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const actionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -65,7 +70,9 @@ export const useAiTurn = ({
       //   notifyInfo(`AI (${player.name}) thinking...`, "ai");
       decisionTimerRef.current = setTimeout(async () => {
         try {
-          const isContinue = await aiCheckContinue();
+          const decision = await aiCheckContinueExplained();
+          const isContinue = decision.should_continue;
+          setAiThought(decision.thought);
           setAiAction(isContinue ? "hop" : "stop");
           //   notifyInfo(
           //     `AI (${player.name}) decided to ${isContinue ? "Hop" : "Stop"}`,
@@ -86,6 +93,7 @@ export const useAiTurn = ({
           notifyError("AI encountered an error deciding.", "aiError");
           setAiAction(null);
           setAiTargetChoice(null);
+          setAiThought(null);
           setIsAiActing(false);
           isProcessingRef.current = false; // Reset ref on error
         }
@@ -99,6 +107,7 @@ export const useAiTurn = ({
       if (isAiActing || aiAction || aiTargetChoice) {
         setAiAction(null);
         setAiTargetChoice(null);
+        setAiThought(null);
         setIsAiActing(false);
         isProcessingRef.current = false; // Ensure ref is false if switching away
         clearTimers(); // Clear any pending AI actions
@@ -131,8 +140,10 @@ export const useAiTurn = ({
         try {
           if (dice.choices.length > 0) {
             // notifyInfo(`AI (${player.name}) choosing column...`, "ai");
-            const chosenChoice = await aiChooseColumn(dice);
+            const decision = await aiChooseColumnExplained(dice);
+            const chosenChoice = decision.choice;
             setAiTargetChoice(chosenChoice);
+            setAiThought(decision.thought);
             setAiAction("choose");
             // notifyInfo(
             //   `AI (${player.name}) chose ${chosenChoice[0]}${
@@ -146,13 +157,14 @@ export const useAiTurn = ({
               // Reset state for the next potential Hop/Stop decision in the same turn
               setAiAction(null);
               setAiTargetChoice(null);
+              setAiThought(null);
               setIsAiActing(false); // Ready for next Hop/Stop check
               // isProcessingRef is already false or will be cleared by clearTimers
               actionTimerRef.current = null;
             }, actionDelay);
           } else {
-            notifyInfo(`AI (${player.name}) Croaked!`, "ai");
             setAiAction("croaked");
+            setAiThought("No legal hops from that roll. The mud wins this one.");
             actionTimerRef.current = setTimeout(async () => {
               await endPlayerRun(true); // This resets isAiActing via its own logic
               // isProcessingRef is already false or will be cleared by clearTimers
@@ -164,6 +176,7 @@ export const useAiTurn = ({
           notifyError("AI encountered an error choosing.", "aiError");
           setAiAction(null);
           setAiTargetChoice(null);
+          setAiThought(null);
           setIsAiActing(false);
           // isProcessingRef is already false or will be cleared by clearTimers
         }
@@ -185,5 +198,5 @@ export const useAiTurn = ({
   ]); // Depends on dice results
 
   // Return the state needed by the UI
-  return { aiAction, aiTargetChoice };
+  return { aiAction, aiTargetChoice, aiThought };
 };
