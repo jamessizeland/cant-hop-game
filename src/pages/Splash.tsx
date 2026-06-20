@@ -3,6 +3,7 @@
 import { AppUpdatePrompt } from "@/components/AppUpdatePrompt";
 import Footer from "@/components/Layout/footer";
 import { motion } from "motion/react";
+import { useNavigate } from "react-router-dom";
 
 const containerVariants = {
   hidden: {},
@@ -24,6 +25,8 @@ const fadeUpVariants = {
 };
 
 export const SplashPage = () => {
+  const navigate = useNavigate();
+
   return (
     <motion.div
       className="flex items-center justify-center h-screen w-screen"
@@ -48,7 +51,7 @@ export const SplashPage = () => {
       </div>
       <div className="absolute bottom-1/6">
         <motion.button
-          onClick={() => (window.location.href = "/settings")}
+          onClick={() => navigate("/settings")}
           className="btn btn-xl bg-green-400 text-black"
           animate={{ y: [0, -10, 0] }}
           transition={{

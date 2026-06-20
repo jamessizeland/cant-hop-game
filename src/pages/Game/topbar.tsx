@@ -1,5 +1,6 @@
 import { MdClose } from "react-icons/md";
 import { PlayerColors } from "@/types";
+import { useNavigate } from "react-router-dom";
 
 const TopBar = ({
   playerName,
@@ -8,6 +9,8 @@ const TopBar = ({
   playerName: string;
   playerIndex?: number;
 }) => {
+  const navigate = useNavigate();
+
   return (
     <div className="w-screen h-10 text-white flex items-center justify-center absolute">
       <h1
@@ -21,7 +24,7 @@ const TopBar = ({
       <button
         type="button"
         className="absolute right-4 text-2xl"
-        onClick={() => (location.href = "/")}
+        onClick={() => navigate("/")}
       >
         <MdClose />
       </button>

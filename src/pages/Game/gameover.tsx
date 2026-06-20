@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { useNavigate } from "react-router-dom";
 import { notifyError, notifySuccess } from "@/services/notifications";
 import {
   getCareerStatistics,
@@ -82,7 +83,46 @@ function getVerdict(playerStat: PlayerStats, didWin: boolean): Verdict {
   };
 }
 
+function getAiReadout(
+  playerStat: PlayerStats,
+  mode: GameState["settings"]["players"][number]["mode"]
+): string | null {
+  if (mode === "Human") return null;
+
+  const finishedRuns = playerStat.banked + playerStat.croaked;
+  const croakRate = finishedRuns ? playerStat.croaked / finishedRuns : 0;
+
+  if (mode === "Safe") {
+    if (playerStat.banked >= playerStat.croaked * 2) {
+      return "Safe AI read: cautious, tidy, and happy to win by not falling over.";
+    }
+    if (croakRate >= 0.45) {
+      return "Safe AI read: tried to play neat, but the dice kept finding the loose boards.";
+    }
+    return "Safe AI read: mostly kept the runs short and the banked hops warm.";
+  }
+
+  if (mode === "Normal") {
+    if (playerStat.longest_run >= 5) {
+      return "Normal AI read: found a good rhythm and stretched a few turns at the right time.";
+    }
+    if (croakRate >= 0.45) {
+      return "Normal AI read: judged the board well enough, but stayed out one hop too long too often.";
+    }
+    return "Normal AI read: balanced pressure with restraint, which is exactly the brief.";
+  }
+
+  if (playerStat.longest_run >= 7) {
+    return "Risky AI read: played loud, stayed out late, and somehow made it look intentional.";
+  }
+  if (croakRate >= 0.5) {
+    return "Risky AI read: chased the big turn and paid the pond tax.";
+  }
+  return "Risky AI read: kept pushing without completely detonating. Annoyingly respectable.";
+}
+
 const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<StatsSummary>();
   const [careerStats, setCareerStats] = useState<CareerStats>();
 
@@ -179,6 +219,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
             {stats?.player_stats.map((playerStat, index) => {
               const player = gameState.settings.players[index];
               const verdict = getVerdict(playerStat, index === safeWinnerIndex);
+              const aiReadout = getAiReadout(playerStat, player.mode);
 
               return (
                 <section
@@ -193,6 +234,11 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
                   </h4>
                   <p className="mt-1 text-lg font-semibold">{verdict.title}</p>
                   <p className="mt-1 text-sm opacity-80">{verdict.detail}</p>
+                  {aiReadout && (
+                    <p className="mt-2 rounded border border-base-300 bg-base-200/40 px-3 py-2 text-sm opacity-90">
+                      {aiReadout}
+                    </p>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2 text-xs opacity-75">
                     <span>{playerStat.longest_run} hop best run</span>
                     <span>{playerStat.banked} banked</span>
@@ -285,7 +331,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
             onClick={async () => {
               await stopGame();
               await startGame(gameState.settings);
-              window.location.href = "/game";
+              navigate("/game");
             }}
           >
             Rematch?
@@ -294,7 +340,7 @@ const GameOverModal: React.FC<GameOverModalProps> = ({ gameState }) => {
             className="btn"
             onClick={async () => {
               await stopGame();
-              window.location.href = "/";
+              navigate("/");
             }}
           >
             Close
@@ -313,10 +359,17 @@ function buildShareSummary(
 ): string {
   const playerLines = stats.player_stats.map((stat, index) => {
     const name = gameState.settings.players[index].name;
+    const player = gameState.settings.players[index];
     const verdict = getVerdict(stat, index === winnerIndex);
     const icon = index === winnerIndex ? "🏆" : "🐸";
-    
-    return `${icon} ${name}: best run ${stat.longest_run} | banked ${stat.banked} | croaked ${stat.croaked} (${verdict.title})`;
+    const aiReadout = getAiReadout(stat, player.mode);
+
+    return [
+      `${icon} ${name}: best run ${stat.longest_run} | banked ${stat.banked} | croaked ${stat.croaked} (${verdict.title})`,
+      aiReadout ? `   ${aiReadout}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
   });
 
   const achievementLines = achievements.length > 0

@@ -3,11 +3,12 @@
 import PlayerForm from "@/components/elements/form";
 import { useEffect, useState } from "react";
 import { LiaAwardSolid } from "react-icons/lia";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getGameState, getName } from "@/services/ipc";
 import { MdClose } from "react-icons/md";
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const [resume, setResume] = useState(false);
   const [names, setNames] = useState<[string, string]>([
     "Player 1",
@@ -60,7 +61,7 @@ export function SettingsPage() {
       {resume ? (
         <button
           className="fixed bottom-0 right-2 m-4 p-2 h-12 w-32 border rounded mx-2 btn btn-xl bg-green-300 text-black"
-          onClick={() => (window.location.href = "/game")}
+          onClick={() => navigate("/game")}
         >
           Resume
         </button>

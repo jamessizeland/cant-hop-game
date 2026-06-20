@@ -76,6 +76,16 @@ export const PlayerColors = ["#ffffff", "#f87171", "#99f2e6", "#a78bfa"];
 /** Player can choose up to two columns per turn. */
 export type PlayerChoice = [number, number | undefined];
 
+export type AiContinueDecision = {
+  should_continue: boolean;
+  thought: string;
+};
+
+export type AiChoiceDecision = {
+  choice: PlayerChoice;
+  thought: string;
+};
+
 export type PlayerStats = {
   /** Longest successful run */
   longest_run: number;
