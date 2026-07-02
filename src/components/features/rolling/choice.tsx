@@ -46,7 +46,7 @@ const ChoiceContainer: React.FC<{
       id="choice-container"
     >
       {dice.choices.length ? (
-        dice.choices.map((choice, index) => {
+        [...dice.choices].sort((a, b) => a[0] - b[0]).map((choice, index) => {
           // Determine if this choice is the one the AI is targeting
           const isAiChoosingThis =
             mode !== "Human" &&
