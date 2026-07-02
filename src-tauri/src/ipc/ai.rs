@@ -49,7 +49,10 @@ impl EvaluateColumn {
                 Self {
                     banked_distance,
                     risked: column.risked,
-                    topped: (banked_distance - column.risked) == 0,
+                    // Use >= rather than == so that a double hop which overshoots the
+                    // column top (adding 2 to `risked` when only 1 step remained) is
+                    // still recognised as topped and triggers an early bank.
+                    topped: (banked_distance - column.risked) >= 0,
                 }
             })
             .collect()
